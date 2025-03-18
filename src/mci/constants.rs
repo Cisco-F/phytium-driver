@@ -145,3 +145,15 @@ pub const FSDIF_DELAY_US:u32 = 5;
 pub const MCI_MAX_FIFO_CNT:u32 = 0x800;
 
 pub const FSL_SDMMC_MAX_CMD_RETRIES:u32 = 10;
+
+pub const FSDIF0_ID: u32 = 0;
+pub const FSDIF1_ID: u32 = 1;
+
+pub const FSDIF_IDMAC_DES0_DIC: u32 = 1 << 1;    /* 内部描述表不触发TI/RI中断 */
+pub const FSDIF_IDMAC_DES0_LD: u32 = 1 << 2;     /* 数据的最后一个描述符 */
+pub const FSDIF_IDMAC_DES0_FD: u32 = 1 << 3;     /* 数据的第一个描述符 */
+pub const FSDIF_IDMAC_DES0_CH: u32 = 1 << 4;     /* 链接下一个描述符地址 */
+pub const FSDIF_IDMAC_DES0_ER: u32 = 1 << 5;     /* 链表已经到达最后一个链表 */
+pub const FSDIF_IDMAC_DES0_CES: u32 = 1 << 30;   /* RINTSTS寄存器错误汇总 */
+pub const FSDIF_IDMAC_DES0_OWN: u32 = 1 << 31;   /* 描述符关联DMA，完成传输后该位置置0 */
+pub const FSDIF_IDMAC_MAX_BUF_SIZE: usize = 0x1000; // 每个desc在chained mode最多传输的字节数
