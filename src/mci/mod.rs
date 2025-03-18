@@ -671,6 +671,70 @@ impl MCI {
 
         Ok(())
     }
+
+    /// start DMA transfers for data
+    pub fn dma_transfer_data(&mut self, data: &FsdifBuf) -> FsdifResult {
+        let mut base_addr = self.config.base_addr;
+
+        self.interrupt_mask_set(FsDifIntrType::GeneralIntr, FSDIF_INTS_CMD_MASK, true);
+        self.interrupt_mask_set(FsDifIntrType::DmaIntr, FSDIF_DMAC_INTS_MASK, true);
+
+        self.setup_dma_descriptor(&data)?;
+
+        let data_len = data.blkcnt * data.blksz;
+        info!("Descriptor@{:p}, trans bytes: {}, block size: {}", self.desc_list.first_desc, data_len, data.blksz);
+
+        self.descriptor_set(self.desc_list.first_desc_dma as u32);
+        self.trans_bytes_set(data_len);
+        self.block_size_set(data.blksz);
+
+        Ok(())
+    }
+
+    /// start command and data transfer in DMA mode
+    pub fn dma_transfer(&mut self, cmd_data: &mut FSdifCmdData) -> FsdifResult {
+        let mut base_addr = self.config.base_addr;
+        cmd_data.success = false;
+        // todo 将self的cur_cmd指向传入的cmd_data
+
+        if !self.is_ready {
+            error!("Device is not yet initialized!");
+            return Err(FsdifError::NotInit);
+        }
+
+        if self.config.trans_mode != FsDifTransMode::DmaTransMode {
+            error!("Device is not configured in DMA transfer mode!");
+            return Err(FsdifError::InvalidState);
+        }
+
+        /* for removable media, check if card exists */
+        if !self.config.non_removable && !self.card_detected() {
+            error!("card is not detected !!!");
+            return Err(FsdifError::NoCard);
+        }
+
+        /* wait previous command finished and card not busy */
+        self.poll_wait_busy_card()?;
+
+        // 写0xffffe ？
+        self.reg.write_reg(FsdifRawInts::from_bits_truncate((1 << 16) - 2));
+
+        /* reset fifo and DMA before transfer */
+        self.ctrl_reset(FsdifCtrl::FIFO_RESET | FsdifCtrl::DMA_RESET)?;
+
+        /* enable use of DMA */
+        let reg = self.reg.read_reg::<FsdifCtrl>();
+        self.reg.write_reg(reg | FsdifCtrl::USE_INTERNAL_DMAC);
+        let reg = self.reg.read_reg::<FsdifBusMode>();
+        self.reg.write_reg(reg | FsdifBusMode::DE);
+
+        // 传输数据为空，C SDK写法为指针为NULL，这里暂且这样写
+        if cmd_data.data.buf.len() != 0 {
+            self.dma_transfer_data(&cmd_data.data)?;
+        }
+
+        Ok(())
+    }
 }
 
 pub struct FsdifBuf<'a> {
@@ -679,6 +743,7 @@ pub struct FsdifBuf<'a> {
     pub blksz: u32,
     pub blkcnt: u32,
 }
+
 pub struct FSdifCmdData<'a> {
     pub cmdidx: u32,
     pub cmdarg: u32,
