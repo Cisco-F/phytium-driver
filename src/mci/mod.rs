@@ -674,8 +674,6 @@ impl MCI {
 
     /// start DMA transfers for data
     pub fn dma_transfer_data(&mut self, data: &FsdifBuf) -> FsdifResult {
-        let mut base_addr = self.config.base_addr;
-
         self.interrupt_mask_set(FsDifIntrType::GeneralIntr, FSDIF_INTS_CMD_MASK, true);
         self.interrupt_mask_set(FsDifIntrType::DmaIntr, FSDIF_DMAC_INTS_MASK, true);
 
@@ -693,7 +691,6 @@ impl MCI {
 
     /// start command and data transfer in DMA mode
     pub fn dma_transfer(&mut self, cmd_data: &mut FSdifCmdData) -> FsdifResult {
-        let mut base_addr = self.config.base_addr;
         cmd_data.success = false;
         // todo 将self的cur_cmd指向传入的cmd_data
 
@@ -732,6 +729,76 @@ impl MCI {
         if cmd_data.data.buf.len() != 0 {
             self.dma_transfer_data(&cmd_data.data)?;
         }
+
+        Ok(())
+    }
+
+    pub fn poll_wait_dma_end(&mut self, cmd_data: &mut FSdifCmdData) -> FsdifResult {
+        let base_addr = self.iopad.get_base_addr();
+        let wait_bits = if cmd_data.data.blkcnt == 0 { FSDIF_INT_CMD_BIT } else { FSDIF_INT_CMD_BIT | FSDIF_INT_DTO_BIT };
+        let mut reg_val;
+
+        if !self.is_ready {
+            error!("Device is not yet initialized!");
+            return Err(FsdifError::NotInit);
+        }
+
+        if self.config.trans_mode != FsDifTransMode::DmaTransMode {
+            error!("Device is not configured in DMA transfer mode!");
+            return Err(FsdifError::InvalidState);
+        }
+
+        /* wait command done or data timeout */
+        let mut delay = FSDIF_TIMEOUT;
+        loop {
+            reg_val = self.reg.read_reg::<FsdifRawInts>().bits();
+            if delay % 1000 == 0 {
+                debug!("reg_val = 0x{:x}", reg_val);
+            }
+            // todo relax handler? 
+
+            delay -= 1;
+            if wait_bits & reg_val == wait_bits || delay == 0 {
+                break;
+            }
+        }
+
+        /* clear status to ack data done */
+        self.raw_status_clear();
+
+        if wait_bits & reg_val != wait_bits && delay <= 0 {
+            error!("Wait command done timeout, raw ints: 0x{:x}!", reg_val);
+            return Err(FsdifError::CmdTimeout);
+        }
+
+        if cmd_data.data.buf.len() == 0 {
+            let read = cmd_data.flag.bits() & FSDIF_CMD_FLAG_READ_DATA;
+            if read != 0 {
+                unsafe { dsb(); }
+            }
+        }
+
+        self.get_cmd_response(cmd_data)?;
+
+        Ok(())
+    }
+
+    /// Setup DMA descriptor for SDIF controller instance
+    pub fn set_idma_list(&mut self, desc: *mut FSdifDmaDesc, desc_dma: u32, desc_num: u32) -> FsdifResult {
+        if !self.is_ready {
+            error!("Device is not yet initialized!");
+            return Err(FsdifError::NotInit);
+        }
+
+        if self.config.trans_mode != FsDifTransMode::DmaTransMode {
+            error!("Device is not configured in DMA transfer mode!");
+            return Err(FsdifError::InvalidState);
+        }
+
+        self.desc_list.first_desc = desc;
+        self.desc_list.first_desc_dma = desc_dma;
+        self.desc_list.desc_num = desc_num;
+        self.desc_list.desc_trans_sz = FSDIF_IDMAC_MAX_BUF_SIZE;
 
         Ok(())
     }

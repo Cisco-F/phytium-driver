@@ -12,7 +12,7 @@ pub struct FSdifDmaDesc {
 
 pub struct FSdifDmaDescList {
     pub first_desc: *mut FSdifDmaDesc,
-    pub first_desc_dma: usize,  // 第一个descriptor的物理地址
+    pub first_desc_dma: u32,  // 第一个descriptor的物理地址
     pub desc_num: u32,
     pub desc_trans_sz: u32,   // 单个descriptor传输的字节数
 }

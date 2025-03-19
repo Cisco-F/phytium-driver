@@ -25,6 +25,10 @@ impl IoPad {
         }
     }
 
+    pub fn get_base_addr(&self) -> NonNull<u8> {
+        self.reg.addr
+    }
+
     pub fn func_get<T: FlagReg + XReg0 + BitsOps>(&self) -> FioPadFunc {
         let reg_val = self.reg.read_reg::<T>();
         let func = T::func_get(reg_val);
