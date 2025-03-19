@@ -564,6 +564,19 @@ impl MCI {
 
 //* DMA 相关的函数 */
 impl MCI {
+    // todo dma burst
+    pub fn enable_dma(&mut self) {
+        self.reg.modify_reg(|reg| {
+            FsdifBusMode::DE | reg
+        });
+    }
+
+    pub fn dma_int_set(&mut self) {
+        self.reg.modify_reg(|reg| {
+            FsdifDmacIntEn::RI | FsdifDmacIntEn::TI | FsdifDmacIntEn::FBE | reg
+        });
+    }
+
     pub fn dump_dma_descriptor(&self, desc_in_use: u32) {
         if !self.desc_list.first_desc.is_null() {
             for i in 0..desc_in_use {
@@ -971,7 +984,22 @@ impl MCI {
 
 impl MCI {
     pub fn show_status(&self) {
-        warn!("status: 0x{:x}", self.reg.read_reg::<FsdifStatus>());
+        debug!("status: 0x{:x}", self.reg.read_reg::<FsdifStatus>());
+    }
+    pub fn show_cntrl(&self) {
+        debug!("cntrl: 0x{:x}", self.reg.read_reg::<FsdifCtrl>());
+    }
+    pub fn show_busmode(&self) {
+        debug!("busmode: 0x{:x}", self.reg.read_reg::<FsdifBusMode>());
+    }
+    pub fn show_blksiz(&self) {
+        debug!("blksiz: 0x{:x}", self.reg.read_reg::<FsdifBlkSiz>());
+    }
+    pub fn show_bytcnt(&self) {
+        debug!("bytcnt: 0x{:x}", self.reg.read_reg::<FsdifBytCnt>());
+    }
+    pub fn show_dmacinten(&self) {
+        debug!("dmacinten: 0x{:x}", self.reg.read_reg::<FsdifDmacIntEn>());
     }
     pub fn dump_register(&self) {
         warn!("cntrl: 0x{:x}", self.reg.read_reg::<FsdifCtrl>());
