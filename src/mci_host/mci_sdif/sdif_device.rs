@@ -21,12 +21,13 @@ use crate::mci_host::err::*;
 use crate::mci_host::constants::*;
 use crate::mci::constants::*;
 use crate::mci_host::sd::constants::SdCmd;
+use crate::mci::mci_dma::FSdifIDmaDesc;
 
 
 pub(crate) struct SDIFDevPIO {
     hc: RefCell<MCI>,                            // SDIF 硬件控制器
     hc_cfg: RefCell<MCIConfig>,                  // SDIF 配置
-    //rw_desc: *mut FSdifIDmaDesc,          // DMA 描述符指针，用于管理数据传输
+    rw_desc: *mut FSdifIDmaDesc,                // DMA 描述符指针，用于管理数据传输
     desc_num: Cell<u32>,                        // 描述符数量，表示 DMA 描述符的数量
 }
 
@@ -35,6 +36,7 @@ impl SDIFDevPIO {
         Self {
             hc: MCI::new(MCIConfig::new(addr)).into(),
             hc_cfg: MCIConfig::new(addr).into(),
+            rw_desc: core::ptr::null_mut(),
             desc_num: 0.into(),
         }
     }

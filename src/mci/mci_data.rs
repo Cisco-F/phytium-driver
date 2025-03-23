@@ -58,4 +58,8 @@ impl MCIData {
         self.buf = buf
     }
 
+    pub(crate) fn buf_dma(&self) -> u32 {
+        self.buf_dma
+    }
+
 }

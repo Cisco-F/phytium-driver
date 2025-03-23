@@ -98,6 +98,10 @@ impl<E:RegError> Reg<E> {
         self.modify_reg(|old| val | old)
     }
 
+    pub fn get_base_addr(&self) -> NonNull<u8> {
+        self.addr
+    }
+
     pub fn wait_for<R: FlagReg, F: Fn(R) -> bool>(
         &self,
         f: F,
