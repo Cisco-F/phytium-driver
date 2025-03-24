@@ -390,8 +390,10 @@ impl MCIHostDevice for SDIFDevPIO {
         let mut cmd_data = self.covert_command_info(content);
 
         if host.config.enable_dma {
-            // todo
-        }else {
+            if let Err(_) = self.hc.borrow_mut().dma_transfer(&mut cmd_data) {
+                return Err(MCIHostError::NoData);
+            }
+        } else {
 
             if let Err(_) = self.hc.borrow_mut().pio_transfer(&mut cmd_data) {
                 return Err(MCIHostError::NoData);

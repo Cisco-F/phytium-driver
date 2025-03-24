@@ -85,10 +85,7 @@ impl MCI {
         // 计算需要多少desc来传输
         if data_len > desc_list.desc_trans_sz {
             desc_num = data_len / desc_list.desc_trans_sz;
-            desc_num += match data_len % desc_list.desc_trans_sz {
-                0 => 0,
-                _ => 1,
-            };
+            desc_num += if data_len % desc_list.desc_trans_sz == 0 { 0 } else { 1 };
         }
 
         if desc_num > desc_list.desc_num {
@@ -98,62 +95,64 @@ impl MCI {
 
         debug!("DMA transfer 0x{:x} use {} desc, total {} available", data.buf_dma(), desc_num, desc_list.desc_num);
 
+        // setup DMA descriptor list, so that we just need to update buffer address in each transcation
+        let total_size = desc_list.desc_num as usize * core::mem::size_of::<FSdifIDmaDesc>();
         unsafe {
-            let ptr = desc_list.first_desc as *mut u8;
-            let size = core::mem::size_of::<FSdifIDmaDesc>() * desc_list.desc_num as usize;
-            for i in 0..size {
-                *ptr.add(i) = 0;
-            }
+            // todo 这里是*mut u8?
+            core::ptr::write_bytes(desc_list.first_desc as *mut u8, 0, total_size);
         }
 
         for i in 0..desc_num {
-            trans_blocks = if remain_blocks <= desc_blocks {
-                remain_blocks
-            } else {
-                desc_blocks
-            };
+            trans_blocks = if remain_blocks <= desc_blocks { remain_blocks } else { desc_blocks };
             unsafe {
                 let cur_desc = self.desc_list.first_desc.add(i as usize);
-
-                let mut next_desc_addr = desc_list.first_desc_dma as usize + (i + 1) as usize * core::mem::size_of::<FSdifIDmaDesc>();
-
+                let mut next_desc_addr = desc_list.first_desc_dma + (i + 1) * core::mem::size_of::<FSdifIDmaDesc>() as u32;
+    
                 is_first = i == 0;
-                is_last = i == desc_num - 1;
+                is_last = desc_num - 1 == i;
 
+                // set properity of descriptor entry
                 (*cur_desc).attribute = FSDIF_IDMAC_DES0_CH | FSDIF_IDMAC_DES0_OWN;
-                if is_first {
-                    (*cur_desc).attribute |= FSDIF_IDMAC_DES0_FD;
-                }
-                if is_last {
-                    (*cur_desc).attribute |= FSDIF_IDMAC_DES0_LD | FSDIF_IDMAC_DES0_ER;
-                }
+                if is_first { (*cur_desc).attribute |= FSDIF_IDMAC_DES0_FD; }
+                if is_last { (*cur_desc).attribute |= FSDIF_IDMAC_DES0_LD | FSDIF_IDMAC_DES0_ER; }
 
+                // set data length in transfer
                 (*cur_desc).non1 = 0u32;
-                (*cur_desc).len = trans_blocks * data.blksz() as u32;
+                (*cur_desc).len = trans_blocks * data.blksz();
 
-                if buf_addr as u32 % data.blksz() != 0 {
+                // set data buffer for transfer
+                if buf_addr % data.blksz() != 0 {
                     error!("Data buffer 0x{:x} do not align to {}!", buf_addr, data.blksz());
                     return Err(MCIError::DmaBufUnalign);
                 }
 
-                // aarch 架构
-                (*cur_desc).addr_hi = (buf_addr >> 32) as u32;
-                (*cur_desc).addr_lo = buf_addr as u32;
+                // for aarch64
+                // (*cur_desc).addr_hi = (buf_addr >> 32) as u32;
+                // (*cur_desc).addr_lo = buf_addr as u32;
+                // todo 好像不是aarch 64？
+                (*cur_desc).addr_hi = 0;
+                (*cur_desc).addr_lo = buf_addr;
 
+                // set address of next descriptor entry, NULL for last entry
                 next_desc_addr = if is_last { 0 } else { next_desc_addr };
-                if next_desc_addr % core::mem::size_of::<FSdifIDmaDesc>() != 0 {
+                if next_desc_addr as usize % core::mem::size_of::<FSdifIDmaDesc>() != 0 { // make sure descriptor aligned and not cross page boundary
                     error!("DMA descriptor 0x{:x} do not align!", next_desc_addr);
                     return Err(MCIError::DmaBufUnalign);
                 }
 
-                (*cur_desc).desc_hi = (next_desc_addr >> 32) as u32;
-                (*cur_desc).desc_lo = next_desc_addr as u32;
+                // for aarch 64
+                // (*cur_desc).desc_hi = (next_desc_addr >> 32) as u32;
+                // (*cur_desc).desc_lo = next_desc_addr as u32;
+                // todo 同上
+                (*cur_desc).desc_hi = 0;
+                (*cur_desc).desc_lo = next_desc_addr;
 
                 buf_addr += (*cur_desc).len;
                 remain_blocks -= trans_blocks;
             }
         }
-        unsafe{ dsb(); }
+
+        // unsafe{ dsb(); }
         self.dump_dma_descriptor(desc_num);
 
         Ok(())
@@ -171,7 +170,7 @@ impl MCI {
 
         self.descriptor_set(self.desc_list.first_desc_dma as u32);
         self.trans_bytes_set(data_len);
-        self.config.reg().write_reg::<MCIBlkSiz>(MCIBlkSiz::from_bits_truncate(data.blksz()));
+        self.blksize_set(data.blksz());
 
         Ok(())
     }

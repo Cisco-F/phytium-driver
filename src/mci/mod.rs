@@ -37,7 +37,7 @@ pub struct MCI {
     is_ready: bool,
     prev_cmd: u32, // todo 这里需要实现成一个实现了Command的enum
     curr_timing: MCITiming,
-    //todo cur_cmd needed
+    cur_cmd: Option<MCICmdData>,
     io_pad: Option<IoPad>,
     desc_list: FSdifIDmaDescList,
 }
@@ -57,6 +57,7 @@ impl MCI {
             is_ready: false,
             prev_cmd: 0,
             curr_timing: MCITiming::new(),
+            cur_cmd: None,
             io_pad: None,
             desc_list: FSdifIDmaDescList::new(),
         }
@@ -68,6 +69,7 @@ impl MCI {
             is_ready: true,
             prev_cmd: 0,
             curr_timing: MCITiming::new(),
+            cur_cmd: None,
             io_pad: None,
             desc_list: FSdifIDmaDescList::new(),
         }
@@ -83,6 +85,11 @@ impl MCI {
 
     pub fn iopad_take(&mut self) -> Option<IoPad> {
         self.io_pad.take()
+    }
+
+    // todo 避免所有权问题先用了clone
+    pub fn cur_cmd_set(&mut self, cmd: &MCICmdData) {
+        self.cur_cmd = Some(cmd.clone());
     }
 
     /* initialization SDIF controller instance */
@@ -220,10 +227,10 @@ impl MCI {
         Ok(())
     }
 
-    /* Start command and data transfer in DMA mode */
+    /// Start command and data transfer in DMA mode
     pub fn dma_transfer(&mut self, cmd_data: &mut MCICmdData) -> MCIResult {
         cmd_data.success_set(false);
-        // todo 将self的cur_cmd指向传入的cmd_data
+        self.cur_cmd_set(&cmd_data);
 
         if !self.is_ready {
             error!("Device is not yet initialized!");
@@ -235,29 +242,32 @@ impl MCI {
             return Err(MCIError::InvalidState);
         }
 
-        /* for removable media, check if card exists */
+        // for removable media, check if card exists
         if !self.config.non_removable() && !self.check_if_card_exist() {
             error!("card is not detected !!!");
             return Err(MCIError::NoCard);
         }
 
-        /* wait previous command finished and card not busy */
+        // wait previous command finished and card not busy
         self.poll_wait_busy_card()?;
 
-        // 写0xffffe ？
+        // 清除原始中断寄存器
         self.config.reg().write_reg(MCIRawInts::from_bits_truncate((1 << 16) - 2));
 
         /* reset fifo and DMA before transfer */
         self.ctrl_reset(MCICtrl::FIFO_RESET | MCICtrl::DMA_RESET)?;
 
-        /* enable use of DMA */
+        // enable use of DMA
         self.config.reg().modify_reg(|reg| { MCICtrl::USE_INTERNAL_DMAC | reg });
         self.config.reg().modify_reg(|reg| { MCIBusMode::DE | reg });
 
-        // 传输数据为空，C SDK写法为指针为NULL，这里暂且这样写
-        if cmd_data.get_data().is_none() {
+        // transfer data
+        if cmd_data.get_data().is_some() {
             self.dma_transfer_data(cmd_data.get_data().unwrap())?;
         }
+
+        // transfer command
+        self.cmd_transfer(&cmd_data)?;
 
         Ok(())
     }
