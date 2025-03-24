@@ -132,7 +132,7 @@ impl MCI {
 
     /* Setup DMA descriptor for SDIF controller instance */
     // 暂时修改报错类型
-    pub fn set_idma_list(&mut self, desc: *mut FSdifIDmaDesc, desc_dma: u32, desc_num: u32) {
+    pub fn set_idma_list(&mut self, desc: *mut FSdifIDmaDesc, desc_dma: usize, desc_num: u32) {
         if !self.is_ready {
             error!("Device is not yet initialized!");
             // return Err(MCIHostError::NotInit);

@@ -19,7 +19,7 @@ pub struct FSdifIDmaDesc {
 
 pub struct FSdifIDmaDescList {
     pub first_desc: *mut FSdifIDmaDesc,
-    pub first_desc_dma: u32,  // 第一个descriptor的物理地址
+    pub first_desc_dma: usize,  // 第一个descriptor的物理地址
     pub desc_num: u32,
     pub desc_trans_sz: u32,   // 单个descriptor传输的字节数
 }
@@ -106,7 +106,7 @@ impl MCI {
             trans_blocks = if remain_blocks <= desc_blocks { remain_blocks } else { desc_blocks };
             unsafe {
                 let cur_desc = self.desc_list.first_desc.add(i as usize);
-                let mut next_desc_addr = desc_list.first_desc_dma + (i + 1) * core::mem::size_of::<FSdifIDmaDesc>() as u32;
+                let mut next_desc_addr = desc_list.first_desc_dma + (i + 1) as usize * core::mem::size_of::<FSdifIDmaDesc>();
     
                 is_first = i == 0;
                 is_last = desc_num - 1 == i;
@@ -121,17 +121,17 @@ impl MCI {
                 (*cur_desc).len = trans_blocks * data.blksz();
 
                 // set data buffer for transfer
-                if buf_addr % data.blksz() != 0 {
+                if buf_addr % data.blksz() as usize != 0 {
                     error!("Data buffer 0x{:x} do not align to {}!", buf_addr, data.blksz());
                     return Err(MCIError::DmaBufUnalign);
                 }
 
                 // for aarch64
-                // (*cur_desc).addr_hi = (buf_addr >> 32) as u32;
-                // (*cur_desc).addr_lo = buf_addr as u32;
+                (*cur_desc).addr_hi = (buf_addr >> 32) as u32;
+                (*cur_desc).addr_lo = buf_addr as u32;
                 // todo 好像不是aarch 64？
-                (*cur_desc).addr_hi = 0;
-                (*cur_desc).addr_lo = buf_addr;
+                // (*cur_desc).addr_hi = 0;
+                // (*cur_desc).addr_lo = buf_addr;
 
                 // set address of next descriptor entry, NULL for last entry
                 next_desc_addr = if is_last { 0 } else { next_desc_addr };
@@ -141,13 +141,13 @@ impl MCI {
                 }
 
                 // for aarch 64
-                // (*cur_desc).desc_hi = (next_desc_addr >> 32) as u32;
-                // (*cur_desc).desc_lo = next_desc_addr as u32;
+                (*cur_desc).desc_hi = (next_desc_addr >> 32) as u32;
+                (*cur_desc).desc_lo = next_desc_addr as u32;
                 // todo 同上
-                (*cur_desc).desc_hi = 0;
-                (*cur_desc).desc_lo = next_desc_addr;
+                // (*cur_desc).desc_hi = 0;
+                // (*cur_desc).desc_lo = next_desc_addr;
 
-                buf_addr += (*cur_desc).len;
+                buf_addr += (*cur_desc).len as usize;
                 remain_blocks -= trans_blocks;
             }
         }

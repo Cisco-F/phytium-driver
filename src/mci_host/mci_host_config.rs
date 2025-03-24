@@ -36,7 +36,7 @@ impl MCIHostConfig {
 
     pub fn mci0_sd_dma_instance() -> Self {
         MCIHostConfig {
-            host_id: MCIId::MCI0,
+            host_id: MCIId::MCI1,
             host_type: MCIHostType::SDIF,
             card_type: MCIHostCardType::MicroSD,
             enable_irq: true,

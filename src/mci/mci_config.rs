@@ -70,12 +70,22 @@ impl MCIConfig {
             instance_id: MCIId::MCI0,
             reg: MCIReg::new(addr),
             irq_num: 104,
-            trans_mode: MCITransMode::DMA,
+            trans_mode: MCITransMode::PIO,
             non_removable: false,
         }
     }
 
     pub fn new_mci1(addr:NonNull<u8>) -> Self {
+        MCIConfig {
+            instance_id: MCIId::MCI1,
+            reg: MCIReg::new(addr),
+            irq_num: 105,
+            trans_mode: MCITransMode::DMA,
+            non_removable: false,
+        }
+    }
+
+    pub fn restart_mci1(addr: NonNull<u8>) -> Self {
         MCIConfig {
             instance_id: MCIId::MCI1,
             reg: MCIReg::new(addr),
