@@ -21,7 +21,7 @@ use core::time::Duration;
 use crate::mci_host::mci_host_config::MCIHostType;
 use crate::mci_host::mci_sdif::sdif_device::SDIFDevPIO;
 use crate::mci_host::MCIHost;
-use crate::{sd, sleep, IoPad};
+use crate::{sleep, IoPad};
 use crate::tools::u8_to_u32_slice;
 
 use super::err::{MCIHostError, MCIHostStatus};
@@ -33,7 +33,7 @@ use super::mci_host_transfer::{MCIHostCmd, MCIHostData, MCIHostTransfer};
 use super::mci_sdif::constants::SDStatus;
 use cid::SdCid;
 use constants::*;
-use log::{error, info, warn};
+use log::{info, warn};
 use scr::{ScrFlags, SdScr};
 use status::SdStatus;
 use csd::{CsdFlags, SdCardCmdClass, SdCsd};
@@ -58,7 +58,7 @@ pub struct SdCard{
 
 impl SdCard {
     pub fn example_instance(addr: NonNull<u8>,iopad:IoPad) -> Self {
-        let mci_host_config = MCIHostConfig::mci0_sd_instance();
+        let mci_host_config = MCIHostConfig::mci0_sd_dma_instance();
 
         // 组装 base
         let buffer = vec![0u8;mci_host_config.max_trans_size];
@@ -67,7 +67,8 @@ impl SdCard {
         info!("Internal buffer@0x{:x}, length = 0x{}",base.internal_buffer.as_ptr() as usize,base.internal_buffer.len());
         
         // 组装 host
-        let sdif_device = SDIFDevPIO::new(addr);
+        let desc_num = mci_host_config.max_trans_size / mci_host_config.def_block_size;
+        let sdif_device = SDIFDevPIO::new(addr, desc_num);
         sdif_device.iopad_set(iopad);
         let host = MCIHost::new(Box::new(sdif_device), mci_host_config);
         let host_type = host.config.host_type;

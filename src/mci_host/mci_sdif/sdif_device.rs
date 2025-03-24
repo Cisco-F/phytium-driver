@@ -1,7 +1,9 @@
+use core::alloc::Layout;
 use core::cell::{Cell, RefCell};
 use core::ptr::NonNull;
 use core::time::Duration;
 
+use alloc::alloc::alloc;
 use alloc::vec::Vec;
 use log::*;
 
@@ -32,11 +34,21 @@ pub(crate) struct SDIFDevPIO {
 }
 
 impl SDIFDevPIO {
-    pub fn new(addr: NonNull<u8>) -> Self {
+    pub fn new(addr: NonNull<u8>, desc_num: usize) -> Self {
+        // 应该不会报错
+        // todo desclist对齐到MCIHostConfig.def_block_size
+        let layout = Layout::array::<FSdifIDmaDesc>(desc_num).unwrap(); 
+        let rw_desc = unsafe {
+            let ptr = alloc(layout) as *mut FSdifIDmaDesc;
+            if ptr.is_null() {
+                error!("failed to allcate memory for rw_desc!");
+            }
+            ptr
+        };
         Self {
             hc: MCI::new(MCIConfig::new(addr)).into(),
             hc_cfg: MCIConfig::new(addr).into(),
-            rw_desc: core::ptr::null_mut(),
+            rw_desc,
             desc_num: 0.into(),
         }
     }
@@ -76,7 +88,7 @@ impl MCIHostDevice for SDIFDevPIO {
         }
 
         if host.config.enable_dma {
-            // todo
+            self.hc.borrow_mut().set_idma_list(self.rw_desc, (self.rw_desc as usize).try_into().unwrap(), self.desc_num.get());
         }
 
         *self.hc_cfg.borrow_mut() = mci_config;

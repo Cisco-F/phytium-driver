@@ -124,15 +124,16 @@ impl MCI {
     // }
 
     /* Setup DMA descriptor for SDIF controller instance */
-    pub fn set_idma_list(&mut self, desc: *mut FSdifIDmaDesc, desc_dma: u32, desc_num: u32) -> MCIResult {
+    // 暂时修改报错类型
+    pub fn set_idma_list(&mut self, desc: *mut FSdifIDmaDesc, desc_dma: u32, desc_num: u32) {
         if !self.is_ready {
             error!("Device is not yet initialized!");
-            return Err(MCIError::NotInit);
+            // return Err(MCIHostError::NotInit);
         }
 
         if self.config.trans_mode() != MCITransMode::DMA {
             error!("Device is not configured in DMA transfer mode!");
-            return Err(MCIError::InvalidState);
+            // return Err(MCIError::InvalidState);
         }
 
         self.desc_list.first_desc = desc;
@@ -140,7 +141,7 @@ impl MCI {
         self.desc_list.desc_num = desc_num;
         self.desc_list.desc_trans_sz = FSDIF_IDMAC_MAX_BUF_SIZE;
 
-        Ok(())
+        // Ok(())
     }
 
     /* Set the Card clock freqency */
