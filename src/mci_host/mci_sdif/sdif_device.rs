@@ -1,4 +1,5 @@
 use core::alloc::Layout;
+use core::any::TypeId;
 use core::cell::{Cell, RefCell};
 use core::ptr::NonNull;
 use core::time::Duration;
@@ -46,14 +47,36 @@ impl SDIFDevPIO {
             ptr
         };
         Self {
-            hc: MCI::new(MCIConfig::new(addr)).into(),
-            hc_cfg: MCIConfig::new(addr).into(),
+            hc: MCI::new(MCIConfig::new_mci0(addr)).into(),
+            hc_cfg: MCIConfig::new_mci0(addr).into(),
             rw_desc,
-            desc_num: 0.into(),
+            desc_num: (desc_num as u32).into(),
         }
     }
     pub fn iopad_set(&self,iopad:IoPad) {
         self.hc.borrow_mut().iopad_set(iopad);
+    }
+    pub fn blksize_set(&self, blksize: u32) {
+        self.hc.borrow_mut().blksize_set(blksize);
+    }
+    pub fn trans_bytes_set(&self, bytes: u32) {
+        self.hc.borrow_mut().trans_bytes_set(bytes);
+    }
+    pub fn set_dma_mode(&self) {
+        self.hc.borrow_mut().set_dma_mode();
+    }
+    pub fn set_dma_intr(&self) {
+        self.hc.borrow_mut().set_dma_intr();
+    }
+    pub fn set_desc_list_star_reg(&self) {
+        let ptr = self.rw_desc;
+        self.hc.borrow_mut().set_desc_list_star_reg(ptr);
+    }
+    pub fn set_read_addr(&self, buf_ptr: *const Vec<u32>) {
+        self.hc.borrow_mut().set_read_addr(buf_ptr);
+    }
+    pub fn enable_dma(&self) {
+        self.hc.borrow_mut().enable_dma();
     }
 }
 
@@ -75,7 +98,7 @@ impl MCIHostDevice for SDIFDevPIO {
         self.hc.borrow_mut().iopad_set(iopad);
         
         // ?强行 restart 一下
-        let restart_mci = MCI::new_restart(MCIConfig::restart_mci0(addr));
+        let restart_mci = MCI::new_restart(MCIConfig::restart(addr, id));
         restart_mci.restart().unwrap_or_else(|e| error!("restart failed: {:?}", e));
 
         if let Err(_) = self.hc.borrow_mut().config_init(&mci_config) {
@@ -87,9 +110,9 @@ impl MCIHostDevice for SDIFDevPIO {
             // todo
         }
 
-        if host.config.enable_dma {
+        // if host.config.enable_dma {
             self.hc.borrow_mut().set_idma_list(self.rw_desc, (self.rw_desc as usize).try_into().unwrap(), self.desc_num.get());
-        }
+        // }
 
         *self.hc_cfg.borrow_mut() = mci_config;
         Ok(())
@@ -426,5 +449,9 @@ impl MCIHostDevice for SDIFDevPIO {
         }
 
         Ok(())
+    }
+
+    fn type_id(&self) -> core::any::TypeId where Self: 'static {
+        TypeId::of::<SDIFDevPIO>()
     }
 }

@@ -58,7 +58,7 @@ pub struct SdCard{
 
 impl SdCard {
     pub fn example_instance(addr: NonNull<u8>,iopad:IoPad) -> Self {
-        let mci_host_config = MCIHostConfig::mci0_sd_dma_instance();
+        let mci_host_config = MCIHostConfig::mci0_sd_instance();
 
         // 组装 base
         let buffer = vec![0u8;mci_host_config.max_trans_size];
@@ -186,6 +186,44 @@ impl SdCard {
             scr: SdScr::new(),
             stat: SdStatus::new(),
         }
+    }
+
+    pub fn dma_rw_init(&mut self, buf_ptr: *const Vec<u32>) {
+        warn!("dma_rw_init!");
+        // 设置卡块大小长度 
+        // 原本在DMA初始化第二步，为了解决借用的问题放到函数开头
+        let _ = self.block_size_set(512);
+
+        let base = &mut self.base;
+        let host = base.host.as_mut().unwrap();
+        host.config.enable_dma = true;
+        let dev = host.get_dev().unwrap();
+
+        // 配置blksiz寄存器数据块大小为512B
+        dev.blksize_set(512);
+
+        // 配置传输字节数bytcnt
+        // todo 目前只传输一个块
+        dev.trans_bytes_set(512);
+
+        // 配置bus_mode_reg选择dma模式
+        dev.set_dma_mode();
+
+        // 配置intr_en_reg开启dma中断
+        dev.set_dma_intr();
+
+        // 将第一个descriptor地址写入寄存器
+        dev.set_desc_list_star_reg();
+
+        // 将读操作的起始地址写入cmdarg
+        dev.set_read_addr(buf_ptr);
+
+        // 配置config开启dma
+        dev.enable_dma();
+
+        warn!("dma_rw_init success!");
+
+        // Ok(())
     }
 }
 

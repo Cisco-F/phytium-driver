@@ -15,6 +15,7 @@ mod mci_cmddata;
 mod mci_pio;
 pub mod mci_dma;
 
+use alloc::vec::Vec;
 //* 包内的引用 */
 use err::*;
 use constants::*;
@@ -147,6 +148,8 @@ impl MCI {
         self.desc_list.first_desc_dma = desc_dma;
         self.desc_list.desc_num = desc_num;
         self.desc_list.desc_trans_sz = FSDIF_IDMAC_MAX_BUF_SIZE;
+
+        debug!("idma_list set success!");
 
         // Ok(())
     }
@@ -449,11 +452,39 @@ impl MCI {
 
         /* reset internal DMA */
         if self.config.trans_mode() == MCITransMode::DMA {
+            debug!("DMA enabled, reseting internal DMA!");
             self.idma_reset();
         }
         Ok(())
     }
 
+    pub fn set_dma_mode(&mut self) {
+        self.config.reg().modify_reg(|reg| {
+            MCIBusMode::DE | reg
+        });
+    }
+
+    pub fn set_dma_intr(&mut self) {
+        self.config.reg().modify_reg(|reg| {
+            MCIDMACIntEn::FBE | MCIDMACIntEn::RI | MCIDMACIntEn::TI | reg
+        });
+    }
+
+    pub fn set_desc_list_star_reg(&mut self, ptr: *mut FSdifIDmaDesc) {
+        let addr = ptr as usize;
+        self.config.reg().write_reg(MCIDescListAddrH::from_bits_truncate((addr >> 32) as u32));
+        self.config.reg().write_reg(MCIDescListAddrL::from_bits_truncate(addr as u32));
+    }
+
+    pub fn set_read_addr(&mut self, buf_ptr: *const Vec<u32>) {
+        // todo 寄存器是32位的，但地址可能是64位？
+        let addr = buf_ptr as u32;
+        self.config.reg().write_reg(MCICmdArg::from_bits_truncate(addr));
+    }
+
+    pub fn enable_dma(&mut self) {
+        self.config.trans_mode_set(MCITransMode::DMA);
+    }
 
     /* Dump all register value of SDIF instance */
     pub fn register_dump(&self) {

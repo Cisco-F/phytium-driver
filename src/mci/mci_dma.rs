@@ -37,13 +37,6 @@ impl FSdifIDmaDescList {
 
 //* DMA 相关的函数 */
 impl MCI {
-    // todo dma burst
-    pub fn enable_dma(&mut self) {
-        self.config.reg().modify_reg(|reg| {
-            MCIBusMode::DE | reg
-        });
-    }
-
     pub fn dma_int_set(&mut self) {
         self.config.reg().modify_reg(|reg| {
             MCIDMACIntEn::RI | MCIDMACIntEn::TI | MCIDMACIntEn::FBE | reg

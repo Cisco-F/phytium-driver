@@ -35,12 +35,14 @@ mod tests {
         let iopad = IoPad::new(iopad_reg_base);
     
         let mut sdcard = SdCard::example_instance(mci_reg_base,iopad);
-    
+
         let mut buffer = Vec::new();
+        
+        // sdcard.dma_rw_init(&buffer as *const Vec<u32>);
         let _ = sdcard.read_blocks(&mut buffer, 131072+100,1);
     
         error!("test_work passed\n");
-        for i in 0..buffer.len() {
+        for i in 0..1 {
             warn!("{:x},{:x},{:x},{:x}",
                     buffer[i] as u8,
                     (buffer[i] >> 8) as u8,
