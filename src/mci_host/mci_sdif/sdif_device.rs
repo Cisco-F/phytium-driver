@@ -1,6 +1,8 @@
 use core::alloc::Layout;
 use core::any::TypeId;
+use core::arch::asm;
 use core::cell::{Cell, RefCell};
+use core::mem::take;
 use core::ptr::NonNull;
 use core::time::Duration;
 
@@ -361,16 +363,18 @@ impl MCIHostDevice for SDIFDevPIO {
             flag |= MCICmdFlag::SWITCH_VOLTAGE;
         }
 
-        let out_data = if let Some(in_data) = in_trans.data() {
+        let out_data = if let Some(in_data) = in_trans.data_mut() {
             let mut out_data = MCIData::new();
 
             flag |= MCICmdFlag::EXP_DATA;
             
-            let buf = if let Some(rx_data) = in_data.rx_data() {
+            let buf = if let Some(rx_data) = in_data.rx_data_mut() {
+                error!("in conver_command_info buf_dma is {:p}", rx_data.as_ptr());
                 // Handle receive data
                 flag |= MCICmdFlag::READ_DATA;
                 //TODO 这里的CLONE 会降低驱动速度,需要解决这个性能问题 可能Take出来直接用更好
-                rx_data.clone()
+                // rx_data.clone()
+                take(rx_data)
             } else if let Some(tx_data) = in_data.tx_data() {
                 // Handle transmit data
                 flag |= MCICmdFlag::WRITE_DATA;
@@ -384,6 +388,7 @@ impl MCIHostDevice for SDIFDevPIO {
             out_data.blkcnt_set(in_data.block_count());
             out_data.datalen_set(in_data.block_size() as u32 * in_data.block_count() );
             out_data.buf_dma_set(buf.as_ptr() as usize);
+            error!("in conver_command_info buf_dma is {:p}", buf.as_ptr());
             out_data.buf_set(Some(buf));
 
             Some(out_data)

@@ -1,4 +1,6 @@
 use log::*;
+use crate::mci::err;
+
 use super::mci_data::MCIData;
 use super::MCI;
 use super::err::*;
@@ -69,6 +71,7 @@ impl MCI {
         let desc_blocks = desc_list.desc_trans_sz / data.blksz(); 
         let mut remain_blocks = data.blkcnt();
         let mut buf_addr = data.buf_dma();
+        error!("in setup_dma_descriptor buf_dma is 0x{:x}", buf_addr);
         let mut trans_blocks: u32; // 本次循环被传输的块
         let mut is_first;
         let mut is_last;

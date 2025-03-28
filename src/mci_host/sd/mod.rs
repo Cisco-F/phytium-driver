@@ -8,6 +8,7 @@ mod scr;
 mod status;
 
 
+use core::arch::asm;
 use core::cmp::max;
 use core::ptr::NonNull;
 use core::str;
@@ -1241,7 +1242,9 @@ impl SdCard {
         data.block_size_set(block_size as usize);
         data.block_count_set(block_count);
 
-        data.rx_data_set(Some(vec![0;block_size as usize * block_count as usize]));
+        let tmp_buf = vec![0;block_size as usize * block_count as usize];
+        let ptr = tmp_buf.as_ptr().clone();
+        data.rx_data_set(Some(tmp_buf));
         data.enable_auto_command12_set(false);
 
 
@@ -1252,6 +1255,13 @@ impl SdCard {
         // ! debug 这里出现问题
         if let Err(err) = self.transfer(&mut context, 3) {
             return Err(err);
+        }
+
+        unsafe {
+            // let len = tmp_buf.len() * core::mem::size_of::<u32>();
+            asm!("dsb ishst");
+            asm!("dc ivac, {}", in(reg) ptr);
+            asm!("dsb ish");
         }
 
         let data = context.data_mut().unwrap();

@@ -15,7 +15,7 @@ impl MCI {
         }, Some(RETRIES_TIMEOUT))?;
         reg.write_reg(MCICmdArg::from_bits_truncate(arg));
 
-        // unsafe { dsb() };/* drain writebuffer */
+        unsafe { dsb() };/* drain writebuffer */
 
         let cmd_reg = MCICmd::START | cmd;
         

@@ -272,6 +272,9 @@ impl MCI {
         // transfer command
         self.cmd_transfer(&cmd_data)?;
 
+        sleep(Duration::from_millis(1000));
+        
+
         Ok(())
     }
 
