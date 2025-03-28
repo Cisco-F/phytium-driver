@@ -1,6 +1,5 @@
 use core::alloc::Layout;
 use core::any::TypeId;
-use core::arch::asm;
 use core::cell::{Cell, RefCell};
 use core::mem::take;
 use core::ptr::NonNull;
@@ -49,8 +48,8 @@ impl SDIFDevPIO {
             ptr
         };
         Self {
-            hc: MCI::new(MCIConfig::new_mci0(addr)).into(),
-            hc_cfg: MCIConfig::new_mci0(addr).into(),
+            hc: MCI::new(MCIConfig::new_mci1(addr)).into(),
+            hc_cfg: MCIConfig::new_mci1(addr).into(),
             rw_desc,
             desc_num: (desc_num as u32).into(),
         }
@@ -112,9 +111,9 @@ impl MCIHostDevice for SDIFDevPIO {
             // todo
         }
 
-        // if host.config.enable_dma {
+        if host.config.enable_dma {
             self.hc.borrow_mut().set_idma_list(self.rw_desc, (self.rw_desc as usize).try_into().unwrap(), self.desc_num.get());
-        // }
+        }
 
         *self.hc_cfg.borrow_mut() = mci_config;
         Ok(())
@@ -422,9 +421,9 @@ impl MCIHostDevice for SDIFDevPIO {
             if let Err(_) = self.hc.borrow_mut().dma_transfer(&mut cmd_data) {
                 return Err(MCIHostError::NoData);
             }
-            // if let Err(_) = self.hc.borrow_mut().poll_wait_dma_end(&mut cmd_data) {
-            //     return Err(MCIHostError::NoData);
-            // }
+            if let Err(_) = self.hc.borrow_mut().poll_wait_dma_end(&mut cmd_data) {
+                return Err(MCIHostError::NoData);
+            }
         } else {
 
             if let Err(_) = self.hc.borrow_mut().pio_transfer(&mut cmd_data) {

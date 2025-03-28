@@ -1,5 +1,4 @@
 use log::*;
-use crate::mci::err;
 
 use super::mci_data::MCIData;
 use super::MCI;
@@ -148,7 +147,7 @@ impl MCI {
             }
         }
 
-        // unsafe{ dsb(); }
+        unsafe{ dsb(); }
         self.dump_dma_descriptor(desc_num);
 
         Ok(())

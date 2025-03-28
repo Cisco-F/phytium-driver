@@ -59,7 +59,7 @@ pub struct SdCard{
 
 impl SdCard {
     pub fn example_instance(addr: NonNull<u8>,iopad:IoPad) -> Self {
-        let mci_host_config = MCIHostConfig::mci0_sd_instance();
+        let mci_host_config = MCIHostConfig::mci0_sd_dma_instance();
 
         // 组装 base
         let buffer = vec![0u8;mci_host_config.max_trans_size];
@@ -349,9 +349,9 @@ impl SdCard{
         }
 
         /* SDR104, SDR50, and DDR50 mode need tuning */
-        if self.bus_timing_select().is_err() {
-            return Err(MCIHostError::SwitchBusTimingFailed);
-        }
+        // if self.bus_timing_select().is_err() {
+        //     return Err(MCIHostError::SwitchBusTimingFailed);
+        // }
 
         self.card_dump();
 

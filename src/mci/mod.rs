@@ -272,15 +272,16 @@ impl MCI {
         // transfer command
         self.cmd_transfer(&cmd_data)?;
 
-        sleep(Duration::from_millis(1000));
-        
-
         Ok(())
     }
 
     /* Wait DMA transfer finished by poll */
     pub fn poll_wait_dma_end(&mut self, cmd_data: &mut MCICmdData) -> MCIResult {
-        let wait_bits = if cmd_data.get_data().unwrap().blkcnt() == 0 { FSDIF_INT_CMD_BIT } else { FSDIF_INT_CMD_BIT | FSDIF_INT_DTO_BIT };
+        let wait_bits = if cmd_data.get_data().is_none() {
+            FSDIF_INT_CMD_BIT
+        } else {
+            FSDIF_INT_CMD_BIT | FSDIF_INT_DTO_BIT
+        };
         let mut reg_val;
 
         if !self.is_ready {
@@ -316,7 +317,7 @@ impl MCI {
             return Err(MCIError::CmdTimeout);
         }
 
-        if cmd_data.get_data().unwrap().buf().unwrap().len() == 0 {
+        if cmd_data.get_data().is_some() {
             let read = cmd_data.flag().bits() & FSDIF_CMD_FLAG_READ_DATA;
             if read != 0 {
                 unsafe { dsb(); }
@@ -468,9 +469,10 @@ impl MCI {
     }
 
     pub fn set_dma_intr(&mut self) {
-        self.config.reg().modify_reg(|reg| {
-            MCIDMACIntEn::FBE | MCIDMACIntEn::RI | MCIDMACIntEn::TI | reg
-        });
+        // self.config.reg().modify_reg(|reg| {
+        //     MCIDMACIntEn::all()
+        // });
+        self.config.reg().write_reg(MCIDMACIntEn::all());
     }
 
     pub fn set_desc_list_star_reg(&mut self, ptr: *mut FSdifIDmaDesc) {

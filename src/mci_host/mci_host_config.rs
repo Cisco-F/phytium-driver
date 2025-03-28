@@ -39,7 +39,7 @@ impl MCIHostConfig {
             host_id: MCIId::MCI1,
             host_type: MCIHostType::SDIF,
             card_type: MCIHostCardType::MicroSD,
-            enable_irq: true,
+            enable_irq: false,
             enable_dma: true,
             endian_mode: MCIHostEndianMode::Little,
             max_trans_size: SD_MAX_RW_BLK*SD_BLOCK_SIZE,
