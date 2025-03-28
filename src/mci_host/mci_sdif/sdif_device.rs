@@ -383,6 +383,7 @@ impl MCIHostDevice for SDIFDevPIO {
             out_data.blksz_set(in_data.block_size() as u32);
             out_data.blkcnt_set(in_data.block_count());
             out_data.datalen_set(in_data.block_size() as u32 * in_data.block_count() );
+            out_data.buf_dma_set(buf.as_ptr() as usize);
             out_data.buf_set(Some(buf));
 
             Some(out_data)
@@ -416,6 +417,9 @@ impl MCIHostDevice for SDIFDevPIO {
             if let Err(_) = self.hc.borrow_mut().dma_transfer(&mut cmd_data) {
                 return Err(MCIHostError::NoData);
             }
+            // if let Err(_) = self.hc.borrow_mut().poll_wait_dma_end(&mut cmd_data) {
+            //     return Err(MCIHostError::NoData);
+            // }
         } else {
 
             if let Err(_) = self.hc.borrow_mut().pio_transfer(&mut cmd_data) {

@@ -62,4 +62,8 @@ impl MCIData {
         self.buf_dma
     }
 
+    pub(crate) fn buf_dma_set(&mut self, buf_dma: usize) {
+        self.buf_dma = buf_dma;
+    }
+
 }

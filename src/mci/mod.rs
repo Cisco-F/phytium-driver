@@ -255,7 +255,7 @@ impl MCI {
         self.poll_wait_busy_card()?;
 
         // 清除原始中断寄存器
-        self.config.reg().write_reg(MCIRawInts::from_bits_truncate((1 << 16) - 2));
+        self.config.reg().write_reg(MCIRawInts::from_bits_truncate((1 << 20) - 2));
 
         /* reset fifo and DMA before transfer */
         self.ctrl_reset(MCICtrl::FIFO_RESET | MCICtrl::DMA_RESET)?;
