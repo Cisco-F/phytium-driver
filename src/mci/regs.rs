@@ -218,8 +218,6 @@ bitflags! {
         const EBE_BIT = 1 << 15;     /* RW End-bit error (read)/Write no CRC (EBE) */
         const SDIO_BIT = 1 << 16;    /* RW SDIO interrupt for card */
         const ALL_BITS = 0x1FFFF;    /* RW All bits */
-        // const INTS_CMD_MASK = 0x1546;
-        // const INTS_DATA_MASK = 0x2288;
         // const INTS_DATA_MASK = DTO_BIT | DCRC_BIT | DRTO_BIT | SBE_BCI_BIT;
         const INTS_DATA_MASK = 0x2288;
         // const INTS_CMD_MASK = RE_BIT | CMD_BIT | RCRC_BIT | RTO_BIT | HTO_BIT | HLE_BIT;
@@ -253,8 +251,10 @@ bitflags! {
         const EBE_BIT = 1 << 15;     /* RW End-bit error (read)/Write no CRC (EBE) */
         const SDIO_BIT = 1 << 16;    /* RW SDIO interrupt for card */
         const ALL_BITS = 0x1FFFF;    /* RW All bits */
-        const INTS_CMD_MASK = 0x1546;
+        // const INTS_DATA_MASK = DTO_BIT | DCRC_BIT | DRTO_BIT | SBE_BCI_BIT;
         const INTS_DATA_MASK = 0x2288;
+        // const INTS_CMD_MASK = RE_BIT | CMD_BIT | RCRC_BIT | RTO_BIT | HTO_BIT | HLE_BIT;
+        const INTS_CMD_MASK = 0x5446;
     }
 }
 
@@ -588,7 +588,8 @@ bitflags! {
         const NIS = 1 << 8; /* RW 正常中断汇总使能 */
         const AIS = 1 << 9; /* RW 异常中断汇总使能 */
         const ALL_BITS = 0x3ff;
-        const INTS_MASK = MCIDMACIntEn::FBE.bits() | MCIDMACIntEn::DU.bits() | MCIDMACIntEn::NIS.bits() | MCIDMACIntEn::AIS.bits();
+        // const INTS_MASK = FBE | DU | NIS | AIS;
+        const INTS_MASK = 0x314;
     }
 }
 

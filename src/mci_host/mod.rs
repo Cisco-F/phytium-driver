@@ -16,7 +16,6 @@ use alloc::{boxed::Box, rc::Rc};
 
 use constants::*;
 use err::{MCIHostError, MCIHostStatus};
-use log::error;
 use mci_host_card_detect::MCIHostCardDetect;
 use mci_host_config::MCIHostConfig;
 use mci_host_device::MCIHostDevice;
@@ -140,7 +139,6 @@ impl MCIHost {
     }
 
     pub(crate) fn go_idle(&self) -> MCIHostStatus {
-        error!("cmd0 starts");
         let mut command = MCIHostCmd::new();
     
         command.index_set(MCIHostCommonCmd::GoIdleState as u32);

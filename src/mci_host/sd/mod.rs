@@ -587,6 +587,7 @@ impl SdCard{
 
         let result = self.transfer(&mut content, 3);
         let response = content.cmd().unwrap().response();
+        warn!("in write successful blk send response is {:?}", response);
         if result.is_err() || response[0] & MCIHostCardStatusFlag::ALL_ERROR_FLAG.bits() != 0 {
             error!("\r\n\r\nError: send ACMD22 failed with host error {:?}, response {:x}\r\n", result, response[0]);
             return result;
@@ -707,14 +708,6 @@ impl SdCard{
     fn func_select(&mut self,group:SdGroupNum,func:SdTimingFuncNum) -> MCIHostStatus {
 
         /* check if card support CMD6 */
-        let version = match self.version {
-            SdSpecificationVersion::Version1_0 => 1,
-            SdSpecificationVersion::Version1_1 => 2,
-            SdSpecificationVersion::Version2_0 => 3,
-            SdSpecificationVersion::Version3_0 => 4,
-        };
-        warn!("card version is {}", version);
-        warn!("card_command_classes is {:b}", self.csd.card_command_classes);
         if (self.version as u32 <= SdSpecificationVersion::Version1_0 as u32) || 
             (self.csd.card_command_classes & SdCardCmdClass::Switch.bits() == 0) {
             info!("\r\nError: current card not support CMD6\r\n");
@@ -1105,7 +1098,6 @@ impl SdCard {
 
         let command = content.cmd().unwrap();
         let response = command.response();
-        info!("in csd_send response is: {:x?}", response);
 
         self.base.internal_buffer.clear();
         // self.base.internal_buffer.extend(response.iter().flat_map(|&val| val.to_ne_bytes()));
@@ -1278,7 +1270,7 @@ impl SdCard {
 
         let mut command = MCIHostCmd::new();
         
-        info!("read cmd, block_size = {}, block_count = {}", block_size, block_count);
+        info!("read block(s), block_size = {}, block_count = {}", block_size, block_count);
         command.index_set({
             if block_count == 1 {
                 MCIHostCommonCmd::ReadSingleBlock as u32 
@@ -1520,15 +1512,15 @@ impl SdCard {
                 /* high capacity check */
                 if response & MCIHostOCR::HOST_CAPACITY_SUPPORT_FLAG.bits() != 0 {
                     self.flags |= SdCardFlag::SupportHighCapacity;
-                    info!("Is high capcity card > 2GB")
+                    info!("capcity > 2GB, is high capacity card")
                 }
 
                 /* 1.8V support */
                 if response & MCIHostOCR::SWITCH_18_ACCEPT_FLAG.bits() != 0 {
                     self.flags |= SdCardFlag::SupportVoltage180v;
-                    info!("Is UHS card support 1.8v")
+                    info!("supports 1.8v, card is UHS card")
                 } else {
-                    info!("Not UHS card only support 3.3v")
+                    info!("only supports 3.3v, card is not UHS card")
                 }
                 self.base.ocr = response;
                 return Ok(());
@@ -1574,13 +1566,11 @@ impl SdCard {
         }
 
         let raw_src = content.data_mut().unwrap().rx_data_mut().unwrap();
-        info!("in scr_send raw_src is {:b}", raw_src[0]);
 
         /* according to spec. there are two types of Data packet format for SD card
             1. Usual data (8-bit width), are sent in LSB first
             2. Wide width data (SD Memory register), are shifted from the MSB bit, 
                 e.g. ACMD13 (SD Status), ACMD51 (SCR) */
-        
         let _ = host.dev.convert_data_to_little_endian(raw_src, 2, MCIHostDataPacketFormat::MSBFirst,host);
         
         /* decode scr */
@@ -1634,13 +1624,12 @@ impl SdCard {
         };
 
         csd.csd_structure = ((rawcsd[3] & 0xC0000000) >> 30) as u8;
-        info!("csd structure is {:b}", csd.csd_structure);
         csd.data_read_access_time1 = ((rawcsd[3] & 0xFF0000) >> 16) as u8;
         csd.data_read_access_time2 = ((rawcsd[3] & 0xFF00) >> 8) as u8;
         csd.transfer_speed = (rawcsd[3] & 0xFF) as u8;
         csd.card_command_classes = ((rawcsd[2] & 0xFFF00000) >> 20) as u16;
         csd.read_block_length = ((rawcsd[2] & 0xF0000) >> 16) as u8;
-        warn!("card_command_classes is {:b}", csd.card_command_classes);
+
         if rawcsd[2] & 0x8000 != 0 {
             csd.flags |= CsdFlags::READ_BLOCK_PARTIAL.bits();
         }

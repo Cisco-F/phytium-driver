@@ -64,7 +64,6 @@ impl MCI {
                 }
             }
         }
-        debug!("dump ok");
     }
 
     /// setup DMA descriptor list before do transcation
@@ -91,7 +90,7 @@ impl MCI {
             return Err(MCIError::ShortBuf);
         }
 
-        debug!("DMA transfer 0x{:x} use {} desc, total {} available", data.buf_dma(), desc_num, desc_list.desc_num);
+        info!("DMA transfer 0x{:x} use {} desc, total {} available", data.buf_dma(), desc_num, desc_list.desc_num);
 
         // setup DMA descriptor list, so that we just need to update buffer address in each transcation
         let total_size = desc_list.desc_num as usize * core::mem::size_of::<FSdifIDmaDesc>();

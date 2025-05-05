@@ -200,15 +200,15 @@ impl MCIHostDevice for SDIFDev {
         match data_bus_width {
             MCIHostBusWdith::Bit1 => {
                 self.hc.borrow().bus_width_set(data_bus_width as u32);
-                info!("Set bus width to 1 bit");
+                warn!("Set bus width to 1 bit");
             },
             MCIHostBusWdith::Bit4 => {
                 self.hc.borrow().bus_width_set(data_bus_width as u32);
-                info!("Set bus width to 4 bit");
+                warn!("Set bus width to 4 bit");
             },
             MCIHostBusWdith::Bit8 => {
                 self.hc.borrow().bus_width_set(data_bus_width as u32);
-                info!("Set bus width to 8 bit");
+                warn!("Set bus width to 8 bit");
             },
         }
     }
@@ -373,8 +373,6 @@ impl MCIHostDevice for SDIFDev {
             // let bus_addr = map(buf_ptr.cast(), size_of_val(&buf[..]), Direction::Bidirectional);
             // out_data.buf_dma_set(bus_addr as usize);
             out_data.buf_set(Some(buf));
-
-            debug!("buf PA: 0x{:x}, blksz: {}, datalen: {}", out_data.buf_dma(), out_data.blksz(), out_data.datalen());
 
             Some(out_data)
         } else {
