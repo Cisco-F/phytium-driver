@@ -1,6 +1,6 @@
 use alloc::rc::Rc;
 use crate::mci_host::mci_host_card_detect::MCIHostCardDetect;
-use super::{constants::SdTimingMode, io_voltage::SdIoVoltage};
+use super::{consts::SdTimingMode, io_voltage::SdIoVoltage};
 
 pub(crate) struct SdUsrParam {
     pub(crate) sd_pwr: Option<SdPwrFn>,
