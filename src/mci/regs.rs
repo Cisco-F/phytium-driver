@@ -1,7 +1,7 @@
 use core::ops;
 
 use bitflags::bitflags;
-use crate::mci::{constants::*, err::MCIError};
+use crate::mci::{consts::*, err::MCIError};
 
 use super::{FlagReg, Reg};
 
@@ -285,6 +285,8 @@ bitflags! {
         const ALL_BITS = 0x1FFFF;    /* RW All bits */
         const INTS_CMD_MASK = 0x1546;
         const INTS_DATA_MASK = 0x2288;
+        // const CMD_ERR_INTS_MASK = RTO_BIT | RCRC_BIT | RE_BIT | DCRC_BIT | DRTO_BIT | SBE_BCI_BIT;
+        const CMD_ERR_INTS_MASK = 0x23C2;
     }
 }
 
@@ -570,6 +572,8 @@ bitflags! {
         const ALL_BITS = 0x3ff;
         const STATUS_EB_TX = 0b001;
         const STATUS_EB_RX = 0b010;
+        // const DMAC_ERR_INTS_MASK = FBE | DU_BIT1 | NIS | AIS
+        const DMAC_ERR_INTS_MASK = 0x314;
     }
 }
 
@@ -1558,4 +1562,44 @@ bitflags! {
 }
 impl FlagReg for MCIEnableShift {
     const REG: u32 = FSDIF_ENABLE_SHIFT_OFFSET;
+}
+
+bitflags! {
+    pub struct IrqTempRegister: u32 {
+        const BIT0 = 1 << 0;
+        const BIT1 = 1 << 1;
+        const BIT2 = 1 << 2;
+        const BIT3 = 1 << 3;
+        const BIT4 = 1 << 4;
+        const BIT5 = 1 << 5;
+        const BIT6 = 1 << 6;
+        const BIT7 = 1 << 7;
+        const BIT8 = 1 << 8;
+        const BIT9 = 1 << 9;
+        const BIT10 = 1 << 10;
+        const BIT11 = 1 << 11;
+        const BIT12 = 1 << 12;
+        const BIT13 = 1 << 13;
+        const BIT14 = 1 << 14;
+        const BIT15 = 1 << 15;
+        const BIT16 = 1 << 16;
+        const BIT17 = 1 << 17;
+        const BIT18 = 1 << 18;
+        const BIT19 = 1 << 19;
+        const BIT20 = 1 << 20;
+        const BIT21 = 1 << 21;
+        const BIT22 = 1 << 22;
+        const BIT23 = 1 << 23;
+        const BIT24 = 1 << 24;
+        const BIT25 = 1 << 25;
+        const BIT26 = 1 << 26;
+        const BIT27 = 1 << 27;
+        const BIT28 = 1 << 28;
+        const BIT29 = 1 << 29;
+        const BIT30 = 1 << 30;
+        const BIT31 = 1 << 31;
+    }
+}
+impl FlagReg for IrqTempRegister {
+    const REG: u32 = TEMP_REGISTER_OFFSET;
 }

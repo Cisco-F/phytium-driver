@@ -1,6 +1,6 @@
 use crate::mci_host::constants::MCIHostOperationVoltage;
 
-use super::constants::SdIoVoltageCtrlType;
+use super::consts::SdIoVoltageCtrlType;
 
 pub(crate) struct SdIoVoltage {
     typ: SdIoVoltageCtrlType,

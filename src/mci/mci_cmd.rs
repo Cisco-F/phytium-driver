@@ -1,9 +1,11 @@
 use log::*;
 
+use crate::aarch::dsb;
+
 use super::mci_cmddata::MCICmdData;
 use super::MCI;
 use super::err::*;
-use super::constants::*;
+use super::consts::*;
 use super::regs::*;
 
 impl MCI {

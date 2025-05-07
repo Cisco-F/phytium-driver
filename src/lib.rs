@@ -10,7 +10,10 @@ pub mod mci;
 pub mod iopad;
 pub mod mci_host;
 pub mod osa;
+pub mod irq;
 mod tools;
+mod aarch;
+
 
 pub use iopad::*;
 pub use mci_host::*;
@@ -38,6 +41,13 @@ macro_rules! set_impl {
         }
     };
 }
+
+/// Phytium Pi CPU core编号
+pub const CORE0_AFF: u64 = 0x000;
+pub const CORE1_AFF: u64 = 0x100;
+pub const CORE2_AFF: u64 = 0x200;
+pub const CORE3_AFF: u64 = 0x201;
+pub const FCORE_NUM: usize = 4;
 
 // #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 // pub enum Direction {

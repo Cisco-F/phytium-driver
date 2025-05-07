@@ -24,9 +24,11 @@ spin_on = "0.1.1"
 bare-test-macros = "0.2"
 
 [features]
-default = ["dma"]
+default = ["dma", "irq"]
 dma = []
 pio = []
+poll = []
+irq = []
 
 [[test]]
 name = "test"

@@ -4,7 +4,7 @@ compile_error!("can't enable feature dma and pio at the same time!");
 use core::ptr::NonNull;
 
 use super::mci_timing::*;
-use super::constants::*;
+use super::consts::*;
 use super::regs::*;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -82,5 +82,9 @@ impl MCIConfig {
 
     pub fn instance_id(&self) -> MCIId {
         self.instance_id
+    }
+
+    pub fn irq_num(&self) -> u32 {
+        self.irq_num
     }
 }

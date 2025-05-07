@@ -1,7 +1,7 @@
 use super::MCI;
 
 use super::err::*;
-use super::constants::*;
+use super::consts::*;
 use super::regs::*;
 
 use log::*;

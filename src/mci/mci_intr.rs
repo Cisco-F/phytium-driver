@@ -1,5 +1,5 @@
 use super::MCI;
-use super::constants::*;
+use super::consts::*;
 use super::regs::*;
 
 impl MCI {
