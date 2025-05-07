@@ -10,7 +10,7 @@ use super::mci_host_card_detect::MCIHostCardDetect;
 use super::mci_host_transfer::MCIHostTransfer;
 use super::MCIHost;
 use super::MCIHostCardIntFn;
-use super::mci_sdif::constants::SDStatus;
+use super::mci_sdif::consts::SDStatus;
 
 #[allow(unused)]
 pub(crate) trait MCIHostDevice {

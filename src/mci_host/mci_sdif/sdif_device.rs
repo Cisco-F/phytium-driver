@@ -7,6 +7,7 @@ use alloc::vec::Vec;
 use dma_api::DSlice;
 use log::*;
 
+use crate::aarch::dsb;
 use crate::mci::regs::MCIIntMask;
 use crate::mci::mci_data::MCIData;
 use crate::mci::{MCICmdData, MCIConfig, MCI};
@@ -16,16 +17,16 @@ use crate::mci_host::mci_host_transfer::MCIHostTransfer;
 use crate::mci_host::MCIHostCardIntFn;
 use crate::osa::osa_alloc_aligned;
 use crate::osa::pool_buffer::PoolBuffer;
-use crate::sd::constants::SD_BLOCK_SIZE;
+use crate::sd::consts::SD_BLOCK_SIZE;
 use crate::{sleep, IoPad};
 use crate::tools::swap_half_word_byte_sequence_u32;
 use crate::mci_host::mci_host_device::MCIHostDevice;
-use super::constants::SDStatus;
+use super::consts::SDStatus;
 use super::MCIHost;
 use crate::mci_host::err::*;
 use crate::mci_host::constants::*;
-use crate::mci::constants::*;
-use crate::mci_host::sd::constants::SdCmd;
+use crate::mci::consts::*;
+use crate::mci_host::sd::consts::SdCmd;
 use crate::mci::mci_dma::FSdifIDmaDesc;
 
 pub(crate) struct SDIFDev {
@@ -392,15 +393,11 @@ impl MCIHostDevice for SDIFDev {
 
     }
 
+    #[cfg(feature="poll")]
     fn transfer_function(&self,content: &mut MCIHostTransfer, host:&MCIHost) -> MCIHostStatus {
+        use crate::mci_host::err;
+
         self.pre_command(content,host)?;
-        let mut cmd_data = MCICmdData::new();
-        let trans_data = MCIData::new();
-
-        if let Some(_) = content.data() {
-            cmd_data.set_data(Some(trans_data));
-        }
-
         let mut cmd_data = self.covert_command_info(content);
 
         if host.config.enable_dma {
@@ -411,11 +408,9 @@ impl MCIHostDevice for SDIFDev {
                 return Err(MCIHostError::NoData);
             }
         } else {
-
             if let Err(_) = self.hc.borrow_mut().pio_transfer(&mut cmd_data) {
                 return Err(MCIHostError::NoData);
             }
-
             if let Err(_) = self.hc.borrow_mut().poll_wait_pio_end(&mut cmd_data) {
                 return Err(MCIHostError::NoData);
             }
@@ -435,13 +430,55 @@ impl MCIHostDevice for SDIFDev {
         }
 
         if let Err(_) = self.hc.borrow_mut().cmd_response_get(&mut cmd_data) {
-            info!("Transfer cmd and data failed !!!");
+            error!("Transfer cmd and data failed!");
             return Err(MCIHostError::Timeout);
         }
 
         if let Some(cmd) = content.cmd_mut() {
             if cmd.response_type() != MCIHostResponseType::None {
                 cmd.response_mut().copy_from_slice(&cmd_data.get_response()[..4]);
+            }
+        }
+
+        Ok(())
+    }
+
+    #[cfg(feature="irq")]
+    fn transfer_function(&self, content: &mut MCIHostTransfer, host: &MCIHost) -> MCIHostStatus {
+        use crate::aarch::invalidate;
+
+        self.pre_command(content, host)?;
+        let mut cmd_data = self.covert_command_info(content);
+
+        if host.config.enable_dma {
+            if let Err(_) = self.hc.borrow_mut().dma_transfer(&mut cmd_data) {
+                return Err(MCIHostError::NoData);
+            }
+        } else {
+            if let Err(_) = self.hc.borrow_mut().pio_transfer(&mut cmd_data) {
+                return Err(MCIHostError::NoData);
+            }
+        }
+
+        //TODO 这里的CLONE 会降低驱动速度,需要解决这个性能问题 可能Take出来直接用更好
+        if let Some(_) = content.data() {
+            let data = cmd_data.get_data().unwrap();
+            unsafe { invalidate(data.buf().unwrap().as_ptr() as *const u8, data.buf().unwrap().len() * 4); }
+            if let Some(rx_data) = data.buf() {
+                if let Some(in_data) = content.data_mut() {
+                    in_data.rx_data_set(Some(rx_data.clone()));
+                }
+            }
+        }
+
+        if let Err(_) = self.hc.borrow_mut().cmd_response_get(&mut cmd_data) {
+            error!("Transfer cmd and data failed!");
+            return Err(MCIHostError::Timeout);
+        }
+
+        if let Some(cmd) = content.cmd_mut() {
+            if cmd.response_type() != MCIHostResponseType::None {
+                cmd.response_mut().copy_from_slice(&cmd_data.get_response()[..]);
             }
         }
 

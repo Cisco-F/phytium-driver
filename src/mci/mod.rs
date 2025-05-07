@@ -1,5 +1,5 @@
 //! 注意不应把重名的子模块设为pub
-pub mod constants;
+pub mod consts;
 pub mod regs;
 mod err;
 
@@ -16,7 +16,7 @@ pub mod mci_dma;
 use alloc::vec::Vec;
 use dma_api::DSlice;
 use err::*;
-use constants::*;
+use consts::*;
 use mci_dma::{FSdifIDmaDescList, FSdifIDmaDesc};
 use regs::*;
 use log::*;
@@ -25,7 +25,7 @@ pub use mci_cmddata::*;
 pub use mci_config::*;
 pub use mci_timing::*;
 
-use crate::{osa::pool_buffer::PoolBuffer, regs::*, sleep, IoPad};
+use crate::{aarch::dsb, osa::pool_buffer::PoolBuffer, regs::*, sleep, IoPad};
 use core::time::Duration;
 
 pub struct MCI {
@@ -68,6 +68,10 @@ impl MCI {
             io_pad: None,
             desc_list: FSdifIDmaDescList::new(),
         }
+    }
+
+    pub(crate) fn config(&self) -> &MCIConfig {
+        &self.config
     }
 }
 

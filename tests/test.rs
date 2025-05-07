@@ -72,7 +72,7 @@ mod tests {
         //     (receive_buf[i] >> 16) as u8,
         //     (receive_buf[i] >> 24) as u8);
         // }
-        info!("buffer len is {}", receive_buf.len());
+        info!("receive buffer len is {}", receive_buf.len());
 
         info!("test_work passed\n");
     }

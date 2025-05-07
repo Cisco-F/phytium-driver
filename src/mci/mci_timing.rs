@@ -3,7 +3,7 @@ use crate::iopad::regs::{Aj49Reg1, J53Reg1, XReg1};
 use crate::iopad::IoPad;
 use crate::regs::BitsOps;
 
-use super::constants::*;
+use super::consts::*;
 
 pub struct MCITiming {
     use_hold: bool,

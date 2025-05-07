@@ -40,7 +40,7 @@ pub struct MCIHost {
     pub(crate) cd: Option<Rc<MCIHostCardDetect>>,         // 卡检测
     pub(crate) card_int: MCIHostCardIntFn,
 
-    //? 这里 uint8_t tuningType sdmmc_osa_event_t hostEvent sdmmc_osa_mutex_t lock 都没有移植
+    //todo 这里 uint8_t tuningType sdmmc_osa_event_t hostEvent sdmmc_osa_mutex_t lock 都没有移植
 }
 
 #[allow(unused)]

@@ -1,5 +1,5 @@
 use super::mci_data::MCIData;
-use super::constants::*;
+use super::consts::*;
 
 #[derive(Debug,Clone)]
 pub struct MCICmdData {

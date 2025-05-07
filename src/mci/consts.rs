@@ -1,5 +1,3 @@
-use core::arch::asm;
-
 use bitflags::bitflags;
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -87,34 +85,6 @@ impl From<u32> for MCIClkSpeed {
     }
 }
 
-#[inline(always)]
-pub unsafe fn dsb() {
-    core::arch::asm!("dsb sy");
-    core::arch::asm!("isb sy");
-}
-
-#[inline(always)]
-pub unsafe fn flush(addr: *const u8, size: usize) {
-    let mut addr = addr as usize;
-    let end = addr + size;
-    while addr < end {
-        asm!("dc civac, {0}", in(reg) addr, options(nostack, preserves_flags));
-        addr += 64;
-    }
-    dsb();
-}
-
-#[inline(always)]
-pub unsafe fn invalidate(addr: *const u8, size: usize) {
-    let mut addr = addr as usize;
-    let end = addr + size;
-    while addr < end {
-        asm!("dc ivac, {0}", in(reg) addr, options(nostack, preserves_flags));
-        addr += core::mem::size_of::<u32>();
-    }
-    asm!("dsb sy");
-}
-
 /** @name Register Map
  *
  * Register offsets from the base address of an SD device.
@@ -185,3 +155,7 @@ pub const FSDIF_IDMAC_DES0_ER: u32 = 1 << 5;     /* 链表已经到达最后一�
 pub const FSDIF_IDMAC_DES0_CES: u32 = 1 << 30;   /* RINTSTS寄存器错误汇总 */
 pub const FSDIF_IDMAC_DES0_OWN: u32 = 1 << 31;   /* 描述符关联DMA，完成传输后该位置置0 */
 pub const FSDIF_IDMAC_MAX_BUF_SIZE: u32 = 0x1000; // 每个desc在chained mode最多传输的字节数
+
+// 中断相关
+/// 中断事件数
+pub const FSDIF_NUM_OF_EVT: usize = 5;

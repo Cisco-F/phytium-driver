@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 mod usr_param;
-pub(crate) mod constants;
+pub(crate) mod consts;
 mod io_voltage;
 mod cid;
 mod csd;
@@ -30,9 +30,9 @@ use super::constants::*;
 use super::mci_host_card_detect::MCIHostCardDetect;
 use super::mci_host_config::MCIHostConfig;
 use super::mci_host_transfer::{MCIHostCmd, MCIHostData, MCIHostTransfer};
-use super::mci_sdif::constants::SDStatus;
+use super::mci_sdif::consts::SDStatus;
 use cid::SdCid;
-use constants::*;
+use consts::*;
 use log::{debug, error, info, warn};
 use scr::{ScrFlags, SdScr};
 use status::SdStatus;

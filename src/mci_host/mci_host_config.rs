@@ -1,9 +1,11 @@
 #[cfg(all(feature = "dma", feature = "pio"))]
 compile_error!("can't enable feature dma and pio at the same time!");
+#[cfg(all(feature = "irq", feature = "poll"))]
+compile_error!("can't enable feature irq and poll at the same time!");
 
-use crate::mci::constants::MCIId;
+use crate::mci::consts::MCIId;
 
-use super::sd::constants::{SD_BLOCK_SIZE, SD_CLOCK_50MHZ, SD_MAX_RW_BLK};
+use super::sd::consts::{SD_BLOCK_SIZE, SD_CLOCK_50MHZ, SD_MAX_RW_BLK};
 
 #[allow(unused)]
 pub struct MCIHostConfig {
@@ -18,40 +20,41 @@ pub struct MCIHostConfig {
     pub(crate) card_clock: u32,                  // 卡时钟频率
     pub(crate) is_uhs_card: bool,                // 是否为 UHS 卡
     /* for SDIO card, to support card customized interrupt handling */ // todo 暂时没实现这部分功能
+    // todo timeTuner
 }
 
 #[allow(unused)]
 impl MCIHostConfig {
-    #[cfg(feature="dma")]
+    /// 目前默认为DMA POLL模式
     pub fn new() -> Self {
-        Self {
+        let mut config = Self {
             host_id: MCIId::MCI1,
             host_type: MCIHostType::SDIF,
             card_type: MCIHostCardType::MicroSD,
-            enable_irq: false, // todo 后续实现了irq相关会改为true
+            enable_irq: false,
             enable_dma: true,
             endian_mode: MCIHostEndianMode::Little,
             max_trans_size: SD_MAX_RW_BLK * SD_BLOCK_SIZE,
             def_block_size: SD_BLOCK_SIZE,
             card_clock: SD_CLOCK_50MHZ,
             is_uhs_card: false, // todo 需要测试能不能支持UHS模式
-        }
-    }
+        };
 
-    #[cfg(feature="pio")]
-    pub fn new() -> Self {
-        Self {
-            host_id: MCIId::MCI0,
-            host_type: MCIHostType::SDIF,
-            card_type: MCIHostCardType::MicroSD,
-            enable_irq: false, // todo 后续实现了irq相关会改为true
-            enable_dma: false,
-            endian_mode: MCIHostEndianMode::Little,
-            max_trans_size: SD_MAX_RW_BLK * SD_BLOCK_SIZE,
-            def_block_size: SD_BLOCK_SIZE,
-            card_clock: SD_CLOCK_50MHZ,
-            is_uhs_card: false,
+        if cfg!(feature = "dma") {
+            config.host_id = MCIId::MCI1;
+            config.enable_dma = true;
+        } else if cfg!(feature = "pio") {
+            config.host_id = MCIId::MCI0;
+            config.enable_dma = false;
         }
+
+        if cfg!(feature = "irq") {
+            config.enable_irq = true;
+        } else if cfg!(feature = "poll") {
+            config.enable_irq = false;
+        }
+
+        config
     }
 }
 
