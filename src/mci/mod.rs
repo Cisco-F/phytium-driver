@@ -13,7 +13,7 @@ mod mci_cmddata;
 mod mci_pio;
 pub mod mci_dma;
 
-use alloc::vec::Vec;
+use alloc::{boxed::Box, vec::Vec};
 use dma_api::DSlice;
 use err::*;
 use consts::*;
@@ -25,21 +25,24 @@ pub use mci_cmddata::*;
 pub use mci_config::*;
 pub use mci_timing::*;
 
-use crate::{aarch::dsb, osa::pool_buffer::PoolBuffer, regs::*, sleep, IoPad};
+use crate::{aarch::dsb, irq::gic::Gic, osa::pool_buffer::PoolBuffer, regs::*, sleep, FSdifEvtHandler, IoPad, MCIHostDevice};
 use core::time::Duration;
 
 pub struct MCI {
     config: MCIConfig,
     is_ready: bool,
-    prev_cmd: u32, // todo 这里需要实现成一个实现了Command的enum
-    curr_timing: MCITiming,
-    cur_cmd: Option<MCICmdData>,
-    io_pad: Option<IoPad>,
     desc_list: FSdifIDmaDescList,
+    prev_cmd: u32, // todo 这里需要实现成一个实现了Command的enum
+    cur_cmd: Option<MCICmdData>,
+    curr_timing: MCITiming,
+    io_pad: Option<IoPad>,
+    gic_handler: Gic,
+    evt_handler: [Option<FSdifEvtHandler>; FSDIF_NUM_OF_EVT],
+    evt_args: [Option<Box<dyn MCIHostDevice>>; FSDIF_NUM_OF_EVT],
 }
 
 impl MCI {
-    const SWITCH_VOLTAGE: u32 = 11;
+    pub const SWITCH_VOLTAGE: u32 = 11;
     const EXT_APP_CMD: u32 = 55;
     
     pub(crate) fn relax_handler() {
@@ -55,6 +58,10 @@ impl MCI {
             cur_cmd: None,
             io_pad: None,
             desc_list: FSdifIDmaDescList::new(),
+            gic_handler: Gic::interrput_early_init(),
+            evt_handler: [None; FSDIF_NUM_OF_EVT],
+            // todo 这样初始化不知道会不会有影响
+            evt_args: [const { None }; FSDIF_NUM_OF_EVT],
         }
     }
 
@@ -67,11 +74,40 @@ impl MCI {
             cur_cmd: None,
             io_pad: None,
             desc_list: FSdifIDmaDescList::new(),
+            gic_handler: Gic::interrput_early_init(),
+            evt_handler: [None; FSDIF_NUM_OF_EVT],
+            evt_args: [const { None }; FSDIF_NUM_OF_EVT],
         }
     }
 
     pub(crate) fn config(&self) -> &MCIConfig {
         &self.config
+    }
+
+    pub(crate) fn gic_handler_mut(&mut self) -> &mut Gic {
+        &mut self.gic_handler
+    }
+
+    pub(crate) fn cur_cmd(&self) -> &Option<MCICmdData> {
+        &self.cur_cmd
+    }
+
+    pub(crate) fn cur_cmd_index(&self) -> isize {
+        match self.cur_cmd() {
+            Some(cmd) => cmd.cmdidx() as isize,
+            None => -1,
+        }
+    }
+
+    pub(crate) fn cur_cmd_arg(&self) -> isize {
+        match self.cur_cmd() {
+            Some(cmd) => cmd.cmdarg() as isize,
+            None => -1,
+        }
+    }
+
+    pub(crate) fn evt_args(&self, evt: FSdifEvtType) -> &Option<Box<dyn MCIHostDevice>> {
+        &self.evt_args[evt as usize]
     }
 }
 
@@ -84,6 +120,14 @@ impl MCI {
 
     pub fn iopad_take(&mut self) -> Option<IoPad> {
         self.io_pad.take()
+    }
+
+    pub fn evt_handler(&self) -> &[Option<FSdifEvtHandler>; FSDIF_NUM_OF_EVT] {
+        &self.evt_handler
+    }
+
+    pub fn evt_handler_set(&mut self, evt: FSdifEvtType, handler: Option<FSdifEvtHandler>) {
+        self.evt_handler[evt as usize] = handler;
     }
 
     // todo 避免所有权问题先用了clone

@@ -6,6 +6,12 @@ pub enum MCIId {
     MCI1,
 }
 
+impl Default for MCIId {
+    fn default() -> Self {
+        Self::MCI0
+    }
+}
+
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum MCIFifoDepth {
     Depth8 = 23,
@@ -48,8 +54,8 @@ pub enum MCIIntrType {
 }
 
 // 定义事件类型枚举
-#[derive(Debug, PartialEq)]
-pub enum FsDifEvtType {
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum FSdifEvtType {
     CardDetected = 0,  // 卡检测事件
     CmdDone,           // 命令传输完成事件
     DataDone,          // 包含数据的命令传输完成事件
@@ -159,3 +165,5 @@ pub const FSDIF_IDMAC_MAX_BUF_SIZE: u32 = 0x1000; // 每个desc在chained mode�
 // 中断相关
 /// 中断事件数
 pub const FSDIF_NUM_OF_EVT: usize = 5;
+/// 中断event_handler用到的一个寄存器，作用未知
+pub const TEMP_REGISTER_OFFSET: u32 = 0xFD0;

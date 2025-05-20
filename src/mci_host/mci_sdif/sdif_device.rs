@@ -61,7 +61,6 @@ impl SDIFDev {
 }
 
 impl MCIHostDevice for SDIFDev {
-
     fn init(&self, addr: NonNull<u8>,host:&MCIHost) -> MCIHostStatus {
         let num_of_desc = host.config.max_trans_size/host.config.def_block_size;
         self.desc_num.set(num_of_desc as u32);
@@ -85,7 +84,11 @@ impl MCIHostDevice for SDIFDev {
         }
 
         if host.config.enable_irq {
-            // todo
+            if self.hc.get_mut().setup_irq().is_err() {
+                error!("setup irq failed!");
+                return MCIHostError::IrqInitFailed;
+            }
+            self.hc.get_mut().register_event_handler(FSdifEvtType::CardDetected)
         }
 
         if host.config.enable_dma {
@@ -483,5 +486,9 @@ impl MCIHostDevice for SDIFDev {
         }
 
         Ok(())
+    }
+
+    fn card_detected(&self, args: alloc::boxed::Box<dyn MCIHostDevice>, status: u32, dmac_status: u32) {
+        
     }
 }

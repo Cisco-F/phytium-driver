@@ -2,12 +2,14 @@
 #![deny(missing_docs)]
 use core::{alloc::Layout, mem::MaybeUninit, ptr::NonNull};
 
-use consts::MAX_POOL_SIZE;
+use consts::{MAX_POOL_SIZE, OSA_SEM_HANDLE_SIZE};
 use err::FMempError;
 use pool_buffer::PoolBuffer;
 use rlsf::Tlsf;
 use spin::Mutex;
 use lazy_static::*;
+
+use crate::aarch::dsb;
 
 mod err;
 mod consts;
@@ -75,4 +77,16 @@ pub fn osa_alloc_aligned(size: usize, align: usize) -> Result<PoolBuffer, FMempE
 /// Dealloc 'size' bytes space from 'addr'
 pub fn osa_dealloc(addr: NonNull<u8>, size: usize) {
     unsafe { GLOBAL_FMEMP.lock().dealloc(addr, size); }
+}
+
+pub struct OSAEvent {
+    event_flag: u32,
+    name: [u32; (OSA_SEM_HANDLE_SIZE + size_of::<u32>() - 1) / size_of::<u32>()],
+}
+
+pub fn osa_event_set(event_handle: &mut OSAEvent, event_type: u32) {
+    // let osa_current_sr = 0;
+    event_handle.event_flag |= event_type;
+    unsafe { dsb(); }
+    
 }

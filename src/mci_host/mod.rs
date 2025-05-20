@@ -2,7 +2,7 @@
 
 mod constants;
 mod mci_host_config;
-mod mci_host_device;
+pub mod mci_host_device;
 mod mci_host_transfer;
 pub mod mci_sdif;
 mod err;
@@ -18,8 +18,9 @@ use constants::*;
 use err::{MCIHostError, MCIHostStatus};
 use mci_host_card_detect::MCIHostCardDetect;
 use mci_host_config::MCIHostConfig;
-use mci_host_device::MCIHostDevice;
+pub use mci_host_device::MCIHostDevice;
 use mci_host_transfer::{MCIHostCmd, MCIHostTransfer};
+pub use mci_host_device::FSdifEvtHandler;
 
 type MCIHostCardIntFn = fn();
 
@@ -41,6 +42,7 @@ pub struct MCIHost {
     pub(crate) card_int: MCIHostCardIntFn,
 
     //todo 这里 uint8_t tuningType sdmmc_osa_event_t hostEvent sdmmc_osa_mutex_t lock 都没有移植
+    pub(crate) hc_evt: OSAEvent,
 }
 
 #[allow(unused)]

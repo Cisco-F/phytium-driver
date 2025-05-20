@@ -1,5 +1,6 @@
 use core::ptr::NonNull;
 
+use alloc::boxed::Box;
 use alloc::vec::Vec;
 
 use crate::mci::MCICmdData;
@@ -12,8 +13,10 @@ use super::MCIHost;
 use super::MCIHostCardIntFn;
 use super::mci_sdif::consts::SDStatus;
 
+pub type FSdifEvtHandler = fn(&Box<dyn MCIHostDevice>, u32, u32);
+
 #[allow(unused)]
-pub(crate) trait MCIHostDevice {
+pub trait MCIHostDevice {
     
     fn init(&self, addr: NonNull<u8>,host:&MCIHost)-> MCIHostStatus;
     fn do_init(&self, addr: NonNull<u8>,host:&MCIHost) -> MCIHostStatus;
@@ -49,6 +52,13 @@ pub(crate) trait MCIHostDevice {
     fn pre_command(&self,content: &mut MCIHostTransfer, host:&MCIHost) -> MCIHostStatus;
     fn covert_command_info(&self, in_trans: &mut MCIHostTransfer) -> MCICmdData;
     fn transfer_function(&self, content: &mut MCIHostTransfer, host:&MCIHost) -> MCIHostStatus;
+
+    // irq related functions
+    fn card_detected(&self, args: Box<dyn MCIHostDevice>, status: u32, dmac_status: u32);
+    fn cmd_done(&self, args: Box<dyn MCIHostDevice>, status: u32, dmac_status: u32);
+    fn data_done(&self, args: Box<dyn MCIHostDevice>, status: u32, dmac_status: u32);
+    fn error_occur(&self, args: Box<dyn MCIHostDevice>, status: u32, dmac_status: u32);
+    fn sdio_interrupt(&self, args: Box<dyn MCIHostDevice>, status: u32, dmac_status: u32);
 
     /* boot related functions */
     // todo 永远不会用到它们
