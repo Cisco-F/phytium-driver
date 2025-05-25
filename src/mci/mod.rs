@@ -26,7 +26,7 @@ pub use mci_config::*;
 pub use mci_timing::*;
 
 use crate::{aarch::dsb, irq::gic::Gic, osa::pool_buffer::PoolBuffer, regs::*, sleep, FSdifEvtHandler, IoPad, MCIHostDevice};
-use core::time::Duration;
+use core::{ptr::NonNull, time::Duration};
 
 pub struct MCI {
     config: MCIConfig,
@@ -38,7 +38,7 @@ pub struct MCI {
     io_pad: Option<IoPad>,
     gic_handler: Gic,
     evt_handler: [Option<FSdifEvtHandler>; FSDIF_NUM_OF_EVT],
-    evt_args: [Option<Box<dyn MCIHostDevice>>; FSDIF_NUM_OF_EVT],
+    evt_args: [Option<NonNull<u8>>; FSDIF_NUM_OF_EVT],
 }
 
 impl MCI {
@@ -126,8 +126,9 @@ impl MCI {
         &self.evt_handler
     }
 
-    pub fn evt_handler_set(&mut self, evt: FSdifEvtType, handler: Option<FSdifEvtHandler>) {
-        self.evt_handler[evt as usize] = handler;
+    pub fn evt_handler_set(&mut self, evt: FSdifEvtType, _handler: Option<FSdifEvtHandler>, param: NonNull<u8>) {
+        // self.evt_handler[evt as usize] = handler;
+        self.evt_args[evt as usize] = Some(param);
     }
 
     // todo 避免所有权问题先用了clone
