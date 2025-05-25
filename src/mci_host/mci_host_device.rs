@@ -23,6 +23,7 @@ pub trait MCIHostDevice {
     /* sdmmc host operations */
     fn deinit(&self);
     fn reset(&self) -> MCIHostStatus;
+    fn setup_irq(&mut self) -> MCIHostStatus;
 
     /* set sdmmc host mode and get host status */
     fn switch_to_voltage(&self, voltage: MCIHostOperationVoltage,host:&MCIHost) -> MCIHostStatus;

@@ -8,6 +8,7 @@ use crate::mci::consts::MCIId;
 use super::sd::consts::{SD_BLOCK_SIZE, SD_CLOCK_50MHZ, SD_MAX_RW_BLK};
 
 #[allow(unused)]
+#[derive(Clone, Copy)]
 pub struct MCIHostConfig {
     pub(crate) host_id: MCIId,                     // 主机 ID
     pub(crate) host_type: MCIHostType,           // 主机类型

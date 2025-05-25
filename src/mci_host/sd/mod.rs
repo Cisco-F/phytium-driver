@@ -12,6 +12,7 @@ use core::ptr::NonNull;
 use core::str;
 use alloc::boxed::Box;
 use alloc::rc::Rc;
+use alloc::sync::Arc;
 use alloc::vec::Vec;
 use alloc::vec;
 use io_voltage::SdIoVoltage;
@@ -79,7 +80,7 @@ impl SdCard {
         let desc_num = mci_host_config.max_trans_size / mci_host_config.def_block_size;
         let sdif_device = SDIFDev::new(addr, desc_num);
         sdif_device.iopad_set(iopad);
-        let host = MCIHost::new(Box::new(sdif_device), mci_host_config);
+        let host = MCIHost::new(Arc::new(sdif_device), mci_host_config);
         let host_type = host.config.host_type;
 
         // 初步组装 SdCard

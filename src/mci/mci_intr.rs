@@ -38,84 +38,84 @@ impl MCI {
     }
 
     /// Interrupt handler for SDIF instance
-    pub fn fsdif_interrupt_handler(&mut self) {
-        let reg = self.config().reg();
+    // pub fn fsdif_interrupt_handler(&mut self) {
+    //     let reg = self.config().reg();
 
-        let events = reg.read_reg::<MCIRawInts>();
-        let dmac_events = reg.read_reg::<MCIDMACStatus>();
-        let event_mask = reg.read_reg::<MCIIntMask>();
-        let dmac_evt_mask = reg.read_reg::<MCIDMACIntEn>();
+    //     let events = reg.read_reg::<MCIRawInts>();
+    //     let dmac_events = reg.read_reg::<MCIDMACStatus>();
+    //     let event_mask = reg.read_reg::<MCIIntMask>();
+    //     let dmac_evt_mask = reg.read_reg::<MCIDMACIntEn>();
 
-        // no interrupt status
-        if !events.contains(MCIRawInts::ALL_BITS) && !dmac_events.contains(MCIDMACStatus::ALL_BITS) {
-            warn!("irq exit with no action");
-            return;
-        }
+    //     // no interrupt status
+    //     if !events.contains(MCIRawInts::ALL_BITS) && !dmac_events.contains(MCIDMACStatus::ALL_BITS) {
+    //         warn!("irq exit with no action");
+    //         return;
+    //     }
 
-        reg.write_reg::<IrqTempRegister>(IrqTempRegister::from_bits_truncate(0));
+    //     reg.write_reg::<IrqTempRegister>(IrqTempRegister::from_bits_truncate(0));
 
-        // no need to handle interrput
-        if (events.bits() == 0) && !dmac_events.contains(MCIDMACStatus::from_bits_truncate(0x1FFF)) {
-            return;
-        }
+    //     // no need to handle interrput
+    //     if (events.bits() == 0) && !dmac_events.contains(MCIDMACStatus::from_bits_truncate(0x1FFF)) {
+    //         return;
+    //     }
 
-        debug!("events:0x{:x},mask:0x{:x},dmac_events:{:x},dmac_mask:0x{:x}", events, event_mask, dmac_events, dmac_evt_mask);
+    //     debug!("events:0x{:x},mask:0x{:x},dmac_events:{:x},dmac_mask:0x{:x}", events, event_mask, dmac_events, dmac_evt_mask);
 
-        // Clear interrupt status
-        let events_copy = reg.read_reg::<MCIRawInts>();
-        let dmac_events_copy = reg.read_reg::<MCIDMACStatus>();
-        reg.write_reg::<MCIRawInts>(events_copy);
-        reg.write_reg::<MCIDMACStatus>(dmac_events_copy);
+    //     // Clear interrupt status
+    //     let events_copy = reg.read_reg::<MCIRawInts>();
+    //     let dmac_events_copy = reg.read_reg::<MCIDMACStatus>();
+    //     reg.write_reg::<MCIRawInts>(events_copy);
+    //     reg.write_reg::<MCIDMACStatus>(dmac_events_copy);
 
-        // handle sdio irq
-        if (events.bits() & event_mask.bits()) & MCIRawInts::SDIO_BIT.bits() != 0 {
-            warn!("SDIO interrupt here!");
-            self.call_event_handler(FSdifEvtType::SdioIrq, events.bits(), dmac_events.bits());
-        }
+    //     // handle sdio irq
+    //     if (events.bits() & event_mask.bits()) & MCIRawInts::SDIO_BIT.bits() != 0 {
+    //         warn!("SDIO interrupt here!");
+    //         self.call_event_handler(FSdifEvtType::SdioIrq, events.bits(), dmac_events.bits());
+    //     }
 
-        // handle card detect event
-        if events.bits() & event_mask.bits() & MCIRawInts::CD_BIT.bits() != 0 &&
-            !self.config().non_removable() 
-        {
-            warn!("SD status changed here! status:[{}]", reg.read_reg::<MCICardDetect>().bits());
-            self.call_event_handler(FSdifEvtType::CardDetected, events.bits(), dmac_events.bits());
-        }
+    //     // handle card detect event
+    //     if events.bits() & event_mask.bits() & MCIRawInts::CD_BIT.bits() != 0 &&
+    //         !self.config().non_removable() 
+    //     {
+    //         warn!("SD status changed here! status:[{}]", reg.read_reg::<MCICardDetect>().bits());
+    //         self.call_event_handler(FSdifEvtType::CardDetected, events.bits(), dmac_events.bits());
+    //     }
 
-        // handle error state
-        if dmac_events.contains(MCIDMACStatus::DMAC_ERR_INTS_MASK) || 
-            events.contains(MCIRawInts::CMD_ERR_INTS_MASK)
-        {  
-            error!(
-                "Cmd index:{}, arg: 0x{:x}",
-                self.cur_cmd_index(),
-                self.cur_cmd_arg(),
-            );
-            error!(
-                "ERR: events: 0x{:x}, mask: 0x{:x}, dmac_evts: 0x{:x}, dmac_mask: {:x}",
-                events.bits(), event_mask.bits(), dmac_events.bits(), dmac_evt_mask.bits()
-            );
-            self.call_event_handler(FSdifEvtType::ErrOccured, events.bits(), dmac_events.bits());
-        }
+    //     // handle error state
+    //     if dmac_events.contains(MCIDMACStatus::DMAC_ERR_INTS_MASK) || 
+    //         events.contains(MCIRawInts::CMD_ERR_INTS_MASK)
+    //     {  
+    //         error!(
+    //             "Cmd index:{}, arg: 0x{:x}",
+    //             self.cur_cmd_index(),
+    //             self.cur_cmd_arg(),
+    //         );
+    //         error!(
+    //             "ERR: events: 0x{:x}, mask: 0x{:x}, dmac_evts: 0x{:x}, dmac_mask: {:x}",
+    //             events.bits(), event_mask.bits(), dmac_events.bits(), dmac_evt_mask.bits()
+    //         );
+    //         self.call_event_handler(FSdifEvtType::ErrOccured, events.bits(), dmac_events.bits());
+    //     }
 
-        // handle cmd && data done
-        if events.contains(MCIRawInts::DTO_BIT) &&
-            events.contains(MCIRawInts::CMD_BIT)
-        {
-            warn!("cmd and data over!");
-            self.call_event_handler(FSdifEvtType::CmdDone, events.bits(), dmac_events.bits());
-            self.call_event_handler(FSdifEvtType::DataDone, events.bits(), dmac_events.bits());
-        } 
-        else if events.contains(MCIRawInts::CMD_BIT) ||
-            (events.contains(MCIRawInts::HTO_BIT) && self.cur_cmd_index() == MCI::SWITCH_VOLTAGE as isize) // handle cmd done
-        {
-            warn!("cmd over!");
-            self.call_event_handler(FSdifEvtType::CmdDone, events.bits(), dmac_events.bits());
-        }
-        else if events.contains(MCIRawInts::DTO_BIT) { // handle data done
-            warn!("data over!");
-            self.call_event_handler(FSdifEvtType::DataDone, events.bits(), dmac_events.bits());
-        }
-    }
+    //     // handle cmd && data done
+    //     if events.contains(MCIRawInts::DTO_BIT) &&
+    //         events.contains(MCIRawInts::CMD_BIT)
+    //     {
+    //         warn!("cmd and data over!");
+    //         self.call_event_handler(FSdifEvtType::CmdDone, events.bits(), dmac_events.bits());
+    //         self.call_event_handler(FSdifEvtType::DataDone, events.bits(), dmac_events.bits());
+    //     } 
+    //     else if events.contains(MCIRawInts::CMD_BIT) ||
+    //         (events.contains(MCIRawInts::HTO_BIT) && self.cur_cmd_index() == MCI::SWITCH_VOLTAGE as isize) // handle cmd done
+    //     {
+    //         warn!("cmd over!");
+    //         self.call_event_handler(FSdifEvtType::CmdDone, events.bits(), dmac_events.bits());
+    //     }
+    //     else if events.contains(MCIRawInts::DTO_BIT) { // handle data done
+    //         warn!("data over!");
+    //         self.call_event_handler(FSdifEvtType::DataDone, events.bits(), dmac_events.bits());
+    //     }
+    // }
 
     // fn card_detected(&mut self) {
     //     let evt_type = FSdifEvtType::CardDetected as usize;
