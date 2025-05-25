@@ -53,12 +53,7 @@ pub trait MCIHostDevice {
     fn covert_command_info(&self, in_trans: &mut MCIHostTransfer) -> MCICmdData;
     fn transfer_function(&self, content: &mut MCIHostTransfer, host:&MCIHost) -> MCIHostStatus;
 
-    // irq related functions
-    fn card_detected(&self, args: Box<dyn MCIHostDevice>, status: u32, dmac_status: u32);
-    fn cmd_done(&self, args: Box<dyn MCIHostDevice>, status: u32, dmac_status: u32);
-    fn data_done(&self, args: Box<dyn MCIHostDevice>, status: u32, dmac_status: u32);
-    fn error_occur(&self, args: Box<dyn MCIHostDevice>, status: u32, dmac_status: u32);
-    fn sdio_interrupt(&self, args: Box<dyn MCIHostDevice>, status: u32, dmac_status: u32);
+    fn fsdif_interrupt_handler(&mut self);
 
     /* boot related functions */
     // todo 永远不会用到它们

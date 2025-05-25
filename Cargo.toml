@@ -13,6 +13,8 @@ bytemuck = "1.22.0"
 lazy_static = { version = "1.5.0", features = ["spin_no_std"] }
 spin = "0.10.0"
 rlsf = "0.2.1"
+no-std-async = "1.1.2"
+bare-test = "0.4"
 
 [dev-dependencies]
 bare-test = "0.4"
