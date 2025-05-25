@@ -142,6 +142,7 @@ pub const FSDIF_ENABLE_SHIFT_OFFSET: u32 = 0x110; // the enable phase shift reg
 pub const FSDIF_DATA_OFFSET: u32 = 0x200; // the data FIFO access
 
 pub const RETRIES_TIMEOUT:usize = 50000; /* timeout for retries */
+pub const COMMAND_TIMEOUT: u32 = 5000;
 pub const FSDIF_DELAY_US:u32 = 5;
 pub const MCI_MAX_FIFO_CNT:u32 = 0x800;
 

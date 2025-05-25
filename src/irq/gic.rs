@@ -23,7 +23,7 @@ pub struct GicConfig {
     its_base: u32,
 }
 
-static mut ISR_TABLE: [Option<IrqRegister>]
+// static mut ISR_TABLE: [Option<IrqRegister>]
 
 // lazy_static!(
 //     pub static ref INTERRUPT_HANDLER_PTR: Mutex<Gic> =
