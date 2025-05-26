@@ -164,17 +164,17 @@ pub fn param_set(param: Option<NonZeroUsize>, idx: usize) {
 // }
 
 impl MCI {
-    pub fn call_event_handler(&self, evt: FSdifEvtType, events: u32, dmac_events: u32) {
-        if let Some(handler) = *self.evt_handler().get(evt as usize).unwrap() {
-            match self.evt_args(evt) {
-                Some(arg) => handler(arg, events, dmac_events),
-                None => error!(
-                    "no arg set for current event handler! type: {:?}, events: 0x{:x}, dmac_events: {:x}",
-                    evt, events, dmac_events
-                ),
-            }
-        }
-    }
+    // pub fn call_event_handler(&self, evt: FSdifEvtType, events: u32, dmac_events: u32) {
+    //     if let Some(handler) = *self.evt_handler().get(evt as usize).unwrap() {
+    //         match self.evt_args(evt) {
+    //             Some(arg) => handler(arg, events, dmac_events),
+    //             None => error!(
+    //                 "no arg set for current event handler! type: {:?}, events: 0x{:x}, dmac_events: {:x}",
+    //                 evt, events, dmac_events
+    //             ),
+    //         }
+    //     }
+    // }
     pub fn register_event_handler(&mut self, evt: FSdifEvtType, _handler: Option<FSdifEvtHandler>, param: NonNull<u8>) {
         self.evt_handler_set(evt, _handler, param);
     }
