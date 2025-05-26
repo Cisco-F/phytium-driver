@@ -106,9 +106,9 @@ impl MCI {
         }
     }
 
-    pub(crate) fn evt_args(&self, evt: FSdifEvtType) -> &Option<Box<dyn MCIHostDevice>> {
-        &self.evt_args[evt as usize]
-    }
+    // pub(crate) fn evt_args(&self, evt: FSdifEvtType) -> &Option<Box<dyn MCIHostDevice>> {
+    //     &self.evt_args[evt as usize]
+    // }
 }
 
 /// MCI pub API

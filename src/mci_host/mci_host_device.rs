@@ -23,7 +23,6 @@ pub trait MCIHostDevice {
     /* sdmmc host operations */
     fn deinit(&self);
     fn reset(&self) -> MCIHostStatus;
-    fn setup_irq(&mut self) -> MCIHostStatus;
 
     /* set sdmmc host mode and get host status */
     fn switch_to_voltage(&self, voltage: MCIHostOperationVoltage,host:&MCIHost) -> MCIHostStatus;
@@ -54,7 +53,7 @@ pub trait MCIHostDevice {
     fn covert_command_info(&self, in_trans: &mut MCIHostTransfer) -> MCICmdData;
     fn transfer_function(&self, content: &mut MCIHostTransfer, host:&MCIHost) -> MCIHostStatus;
 
-    fn fsdif_interrupt_handler(&mut self);
+    fn fsdif_interrupt_handler(&self);
 
     /* boot related functions */
     // todo 永远不会用到它们

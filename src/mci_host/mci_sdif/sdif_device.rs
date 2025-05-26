@@ -13,7 +13,7 @@ use crate::aarch::dsb;
 use crate::irq::cpu::get_cpu_id;
 use crate::mci::regs::{IrqTempRegister, MCICardDetect, MCIDMACIntEn, MCIDMACStatus, MCIIntMask, MCIRawInts};
 use crate::mci::mci_data::MCIData;
-use crate::mci::{MCICmdData, MCIConfig, MCI};
+use crate::mci::{self, MCICmdData, MCIConfig, MCI};
 use crate::mci_host::mci_host_card_detect::MCIHostCardDetect;
 use crate::mci_host::mci_host_config::*;
 use crate::mci_host::mci_host_transfer::MCIHostTransfer;
@@ -38,7 +38,7 @@ pub(crate) struct SDIFDev {
     hc_cfg: RefCell<MCIConfig>,                 // SDIF 配置
     rw_desc: PoolBuffer,                        // DMA 描述符指针，用于管理数据传输 todo 考虑直接用vec或DVec保存
     desc_num: Cell<u32>,                        // 描述符数量，表示 DMA 描述符的数量
-    hc_evt: OSAEvent,
+    hc_evt: RefCell<OSAEvent>,
 }
 
 impl SDIFDev {
@@ -58,7 +58,7 @@ impl SDIFDev {
             hc_cfg: MCIConfig::new(addr).into(),
             rw_desc,
             desc_num: (desc_num as u32).into(),
-            hc_evt: OSAEvent::default(),
+            hc_evt: RefCell::new(OSAEvent::default()),
         }
     }
     pub fn iopad_set(&self,iopad:IoPad) {
@@ -66,7 +66,7 @@ impl SDIFDev {
     }
 
     fn card_detected(&mut self) {
-        self.hc_evt.osa_event_set(SDMMC_OSA_EVENT_TRANSFER_CMD_SUCCESS);
+        self.hc_evt.borrow_mut().osa_event_set(SDMMC_OSA_EVENT_TRANSFER_CMD_SUCCESS);
     }
 }
 
@@ -93,13 +93,13 @@ impl MCIHostDevice for SDIFDev {
             return Err(MCIHostError::Fail);
         }
 
-        if host.config.enable_irq {
-            if self.hc.get_mut().setup_irq().is_err() {
-                error!("setup irq failed!");
-                return Err(MCIHostError::IrqInitFailed);
-            }
-            // self.hc.get_mut().register_event_handler(FSdifEvtType::CardDetected, Some(()))
-        }
+        // if host.config.enable_irq {
+        //     if self.hc.get_mut().setup_irq().is_err() {
+        //         error!("setup irq failed!");
+        //         return Err(MCIHostError::IrqInitFailed);
+        //     }
+        //     // self.hc.get_mut().register_event_handler(FSdifEvtType::CardDetected, Some(()))
+        // }
 
         if host.config.enable_dma {
             if let Err(_) = self.hc.borrow_mut().set_idma_list(&self.rw_desc, self.desc_num.get()) {
@@ -499,25 +499,25 @@ impl MCIHostDevice for SDIFDev {
             SDMMC_OSA_EVENT_TRANSFER_CMD_SUCCESS
         };
         let mut events: u32 = 0;
-        if self.hc_evt.osa_event_wait(complete_events, COMMAND_TIMEOUT, &mut events, SDMMC_OSA_EVENT_FLAG_AND).is_err() ||
+        if self.hc_evt.borrow_mut().osa_event_wait(complete_events, COMMAND_TIMEOUT, &mut events, SDMMC_OSA_EVENT_FLAG_AND).is_err() ||
             events != complete_events
         {
             error!("wait command done timeout!");
-            self.hc.get_mut().register_dump();
-            self.hc_evt.osa_event_clear(events);
+            self.hc.borrow().register_dump();
+            self.hc_evt.borrow_mut().osa_event_clear(events);
             return Err(MCIHostError::Timeout);
         }
         
-        self.hc_evt.osa_event_clear(events);
+        self.hc_evt.borrow_mut().osa_event_clear(events);
 
         // check if any error events
         let err_events = FSDIF_TRANS_ERR_EVENTS;
         events = 0;
-        self.hc_evt.osa_event_wait(err_events, 0, &mut events, SDMMC_OSA_EVENT_FLAG_OR);
+        self.hc_evt.borrow_mut().osa_event_wait(err_events, 0, &mut events, SDMMC_OSA_EVENT_FLAG_OR);
         if events != 0 {
             error!("finish command with error 0x{:x}", events);
-            self.hc.get_mut().register_dump();
-            self.hc_evt.osa_event_clear(events);
+            self.hc.borrow_mut().register_dump();
+            self.hc_evt.borrow_mut().osa_event_clear(events);
             return Err(MCIHostError::Timeout);
         }
 
@@ -550,84 +550,7 @@ impl MCIHostDevice for SDIFDev {
         Ok(())
     }
 
-    fn fsdif_interrupt_handler(&mut self) {
-        let mci = self.hc.get_mut();
-        let reg = self.hc.get_mut().config().reg();
-
-        let events = reg.read_reg::<MCIRawInts>();
-        let dmac_events = reg.read_reg::<MCIDMACStatus>();
-        let event_mask = reg.read_reg::<MCIIntMask>();
-        let dmac_evt_mask = reg.read_reg::<MCIDMACIntEn>();
-
-        // no interrupt status
-        if !events.contains(MCIRawInts::ALL_BITS) && !dmac_events.contains(MCIDMACStatus::ALL_BITS) {
-            warn!("irq exit with no action");
-            return;
-        }
-
-        reg.write_reg::<IrqTempRegister>(IrqTempRegister::from_bits_truncate(0));
-
-        // no need to handle interrput
-        if (events.bits() == 0) && !dmac_events.contains(MCIDMACStatus::from_bits_truncate(0x1FFF)) {
-            return;
-        }
-
-        debug!("events:0x{:x},mask:0x{:x},dmac_events:{:x},dmac_mask:0x{:x}", events, event_mask, dmac_events, dmac_evt_mask);
-
-        // Clear interrupt status
-        let events_copy = reg.read_reg::<MCIRawInts>();
-        let dmac_events_copy = reg.read_reg::<MCIDMACStatus>();
-        reg.write_reg::<MCIRawInts>(events_copy);
-        reg.write_reg::<MCIDMACStatus>(dmac_events_copy);
-
-        // handle sdio irq
-        if (events.bits() & event_mask.bits()) & MCIRawInts::SDIO_BIT.bits() != 0 {
-            warn!("SDIO interrupt here!");
-            self.call_event_handler(FSdifEvtType::SdioIrq, events.bits(), dmac_events.bits());
-        }
-
-        // handle card detect event
-        if events.bits() & event_mask.bits() & MCIRawInts::CD_BIT.bits() != 0 &&
-            !mci.config().non_removable() 
-        {
-            warn!("SD status changed here! status:[{}]", reg.read_reg::<MCICardDetect>().bits());
-            // self.call_event_handler(FSdifEvtType::CardDetected, events.bits(), dmac_events.bits());
-            self.card_detected()
-        }
-
-        // handle error state
-        if dmac_events.contains(MCIDMACStatus::DMAC_ERR_INTS_MASK) || 
-            events.contains(MCIRawInts::CMD_ERR_INTS_MASK)
-        {  
-            error!(
-                "Cmd index:{}, arg: 0x{:x}",
-                mci.cur_cmd_index(),
-                mci.cur_cmd_arg(),
-            );
-            error!(
-                "ERR: events: 0x{:x}, mask: 0x{:x}, dmac_evts: 0x{:x}, dmac_mask: {:x}",
-                events.bits(), event_mask.bits(), dmac_events.bits(), dmac_evt_mask.bits()
-            );
-            self.call_event_handler(FSdifEvtType::ErrOccured, events.bits(), dmac_events.bits());
-        }
-
-        // handle cmd && data done
-        if events.contains(MCIRawInts::DTO_BIT) &&
-            events.contains(MCIRawInts::CMD_BIT)
-        {
-            warn!("cmd and data over!");
-            self.call_event_handler(FSdifEvtType::CmdDone, events.bits(), dmac_events.bits());
-            self.call_event_handler(FSdifEvtType::DataDone, events.bits(), dmac_events.bits());
-        } 
-        else if events.contains(MCIRawInts::CMD_BIT) ||
-            (events.contains(MCIRawInts::HTO_BIT) && self.cur_cmd_index() == MCI::SWITCH_VOLTAGE as isize) // handle cmd done
-        {
-            warn!("cmd over!");
-            self.call_event_handler(FSdifEvtType::CmdDone, events.bits(), dmac_events.bits());
-        }
-        else if events.contains(MCIRawInts::DTO_BIT) { // handle data done
-            warn!("data over!");
-            self.call_event_handler(FSdifEvtType::DataDone, events.bits(), dmac_events.bits());
-        }
+    fn fsdif_interrupt_handler(&self) {
+        self.hc.borrow_mut().fsdif_interrupt_handler();
     }
 }
