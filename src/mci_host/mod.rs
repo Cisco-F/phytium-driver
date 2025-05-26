@@ -27,7 +27,7 @@ type MCIHostCardIntFn = fn();
 
 #[allow(unused)]
 pub struct MCIHost {
-    pub(crate) dev: Arc<dyn MCIHostDevice>,
+    pub(crate) dev: Arc<Box<dyn MCIHostDevice>>,
     pub(crate) config: MCIHostConfig,                  
     pub(crate) curr_voltage: Cell<MCIHostOperationVoltage>,  
     pub(crate) curr_bus_width: u32,                    
@@ -52,9 +52,9 @@ impl MCIHost {
     //     &mut self.dev
     // }
 
-    pub(crate) fn new(dev: Arc<dyn MCIHostDevice>, config: MCIHostConfig) -> Self {
+    pub(crate) fn new(dev: Box<dyn MCIHostDevice>, config: MCIHostConfig) -> Self {
         MCIHost {
-            dev,
+            dev: Arc::new(dev),
             config,
             curr_voltage: Cell::new(MCIHostOperationVoltage::None),
             curr_bus_width: 0,
@@ -243,8 +243,8 @@ impl MCIHost {
 
         Ok(())
     }
-    pub fn fsdif_interrupt_handler(&mut self) {
-
+    pub fn fsdif_interrupt_handler(&self) {
+        self.dev.as_ref().fsdif_interrupt_handler();
     }
 }
 
@@ -254,7 +254,7 @@ impl MCIHost {
 }
 
 pub struct MCIHostWeak {
-    pub(crate) dev: Weak<dyn MCIHostDevice>,
+    pub(crate) dev: Weak<Box<dyn MCIHostDevice>>,
     pub(crate) config: MCIHostConfig,                  
     pub(crate) curr_voltage: Cell<MCIHostOperationVoltage>,  
     pub(crate) curr_bus_width: u32,                    
@@ -286,9 +286,6 @@ impl MCIHostWeak {
             cd: self.cd.clone(),
             card_int: self.card_int,
         })
-    }
-    pub fn fsdif_interrupt_handler(&mut self) {
-
     }
 }
 

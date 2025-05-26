@@ -2,7 +2,7 @@
 #![deny(missing_docs)]
 use core::{alloc::Layout, mem::MaybeUninit, ptr::NonNull};
 
-use consts::{MAX_POOL_SIZE, OSA_SEM_HANDLE_SIZE};
+use consts::{MAX_POOL_SIZE, OSA_SEM_HANDLE_SIZE, SDMMC_OSA_EVENT_FLAG_AND};
 use err::FMempError;
 use pool_buffer::PoolBuffer;
 use rlsf::Tlsf;
@@ -81,31 +81,32 @@ pub fn osa_dealloc(addr: NonNull<u8>, size: usize) {
 }
 
 pub struct OSAEvent {
-    // event_flag: u32,
-    // name: [u32; (OSA_SEM_HANDLE_SIZE + size_of::<u32>() - 1) / size_of::<u32>()],
-    mutex: Mutex<u32>,
+    mutex: Mutex<EventState>,
     condvar: Condvar,
+}
+
+#[derive(Default)]
+pub struct EventState {
     event_flag: u32,
 }
 
 impl OSAEvent {
     pub fn default() -> Self {
         Self {
-            mutex: Mutex::new(0),
+            mutex: Mutex::new(EventState::default()),
             condvar: Condvar::new(),
-            event_flag: 0,
         }
     }
     pub fn osa_event_set(&mut self, event_type: u32) -> Result<(), &'static str> {
-        let mut flag = self.mutex.lock();
-        *flag |= event_type;
+        let mut state = self.mutex.lock();
+        state.event_flag |= event_type;
         self.condvar.notify_all();
         Ok(())
     }
     pub fn osa_event_wait(&self, event_type: u32, _timeout_ms: u32, event: &mut u32, _flags: u32) -> Result<(), &'static str> {
         self.condvar.wait();
-        *event = self.osa_event_get(event_type);
-        if *event & 1 != 0 {
+        *event = self.osa_event_get();
+        if *event & SDMMC_OSA_EVENT_FLAG_AND != 0 {
             if *event == event_type {
                 return Ok(());
             }
@@ -117,8 +118,12 @@ impl OSAEvent {
 
         Err("event wait failed")
     }
-    pub fn osa_event_get(&self, event_type: u32) -> u32 {
-        self.event_flag
+    pub fn osa_event_get(&self) -> u32 {
+        self.mutex.lock().event_flag
+    }
+    pub fn osa_event_clear(&mut self, event_type: u32) {
+        let mut state = self.mutex.lock();
+        state.event_flag &= !event_type;
     }
 }
 
