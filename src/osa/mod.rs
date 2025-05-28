@@ -1,5 +1,3 @@
-//! An area managed by Tlsf algorithm
-#![deny(missing_docs)]
 use core::{alloc::Layout, mem::MaybeUninit, ptr::NonNull};
 
 use consts::{MAX_POOL_SIZE, OSA_SEM_HANDLE_SIZE, SDMMC_OSA_EVENT_FLAG_AND};

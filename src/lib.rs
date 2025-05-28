@@ -10,7 +10,7 @@ pub mod mci;
 pub mod iopad;
 pub mod mci_host;
 pub mod osa;
-pub mod irq;
+// pub mod irq;
 mod tools;
 mod aarch;
 
