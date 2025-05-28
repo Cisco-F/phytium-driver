@@ -1,18 +1,18 @@
 use core::{alloc::Layout, mem::MaybeUninit, ptr::NonNull};
 
-use consts::{MAX_POOL_SIZE, OSA_SEM_HANDLE_SIZE, SDMMC_OSA_EVENT_FLAG_AND};
+use consts::{MAX_POOL_SIZE, SDMMC_OSA_EVENT_FLAG_AND};
 use err::FMempError;
+use log::error;
 use pool_buffer::PoolBuffer;
 use rlsf::Tlsf;
+use semaphore::Semaphore;
 use spin::Mutex;
 use lazy_static::*;
-use no_std_async::Condvar;
-
-use crate::aarch::dsb;
 
 mod err;
 pub mod consts;
 pub mod pool_buffer;
+pub mod semaphore;
 
 /// Memory menaged by Tlsf pool
 static mut POOL: [MaybeUninit<u8>; MAX_POOL_SIZE] = [MaybeUninit::uninit(); MAX_POOL_SIZE];
@@ -79,57 +79,44 @@ pub fn osa_dealloc(addr: NonNull<u8>, size: usize) {
 }
 
 pub struct OSAEvent {
-    mutex: Mutex<EventState>,
-    condvar: Condvar,
-}
-
-#[derive(Default)]
-pub struct EventState {
     event_flag: u32,
+    handle: Semaphore,
 }
 
 impl OSAEvent {
     pub fn default() -> Self {
         Self {
-            mutex: Mutex::new(EventState::default()),
-            condvar: Condvar::new(),
+            event_flag: 0,
+            handle: Semaphore::new(0),
         }
     }
     pub fn osa_event_set(&mut self, event_type: u32) -> Result<(), &'static str> {
-        let mut state = self.mutex.lock();
-        state.event_flag |= event_type;
-        self.condvar.notify_all();
+        self.event_flag |= event_type;
+        self.handle.up();
+
         Ok(())
     }
-    pub fn osa_event_wait(&self, event_type: u32, _timeout_ms: u32, event: &mut u32, _flags: u32) -> Result<(), &'static str> {
-        self.condvar.wait();
+    pub fn osa_event_wait(&self, event_type: u32, _timeout_ms: u32, event: &mut u32, flags: u32) -> Result<(), &'static str> {
+        self.handle.down();
+
         *event = self.osa_event_get();
-        if *event & SDMMC_OSA_EVENT_FLAG_AND != 0 {
+        if flags & SDMMC_OSA_EVENT_FLAG_AND != 0 {
             if *event == event_type {
                 return Ok(());
             }
         } else {
             if *event & event_type != 0 {
-                return Ok(())
+                return Ok(());
             }
         }
 
+        error!("event wait failed");
         Err("event wait failed")
     }
     pub fn osa_event_get(&self) -> u32 {
-        self.mutex.lock().event_flag
+        self.event_flag
     }
     pub fn osa_event_clear(&mut self, event_type: u32) {
-        let mut state = self.mutex.lock();
-        state.event_flag &= !event_type;
+        self.event_flag &= !event_type;
     }
 }
-
-// pub fn osa_event_set(event_handle: &mut OSAEvent, event_type: u32) {
-//     // let osa_current_sr = 0;
-//     // event_handle.event_flag |= event_type;
-//     // unsafe { dsb(); }
-    
-// }
-
-// pub fn osa_event_wait()
