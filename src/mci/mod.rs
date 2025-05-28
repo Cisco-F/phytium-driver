@@ -25,7 +25,7 @@ pub use mci_cmddata::*;
 pub use mci_config::*;
 pub use mci_timing::*;
 
-use crate::{aarch::dsb, irq::gic::Gic, osa::pool_buffer::PoolBuffer, regs::*, sleep, FSdifEvtHandler, IoPad, MCIHostDevice};
+use crate::{aarch::dsb, osa::pool_buffer::PoolBuffer, regs::*, sleep, FSdifEvtHandler, IoPad, MCIHostDevice};
 use core::{ptr::NonNull, time::Duration};
 
 pub struct MCI {
@@ -36,9 +36,8 @@ pub struct MCI {
     cur_cmd: Option<MCICmdData>,
     curr_timing: MCITiming,
     io_pad: Option<IoPad>,
-    gic_handler: Gic,
-    evt_handler: [Option<FSdifEvtHandler>; FSDIF_NUM_OF_EVT],
-    evt_args: [Option<NonNull<u8>>; FSDIF_NUM_OF_EVT],
+    // gic_handler: Gic,
+    evt_arg: Option<NonNull<u8>>,   // 包裹一个dev实例
 }
 
 impl MCI {
@@ -58,10 +57,8 @@ impl MCI {
             cur_cmd: None,
             io_pad: None,
             desc_list: FSdifIDmaDescList::new(),
-            gic_handler: Gic::interrput_early_init(),
-            evt_handler: [None; FSDIF_NUM_OF_EVT],
-            // todo 这样初始化不知道会不会有影响
-            evt_args: [const { None }; FSDIF_NUM_OF_EVT],
+            // gic_handler: Gic::interrput_early_init(),
+            evt_arg: None,
         }
     }
 
@@ -74,9 +71,8 @@ impl MCI {
             cur_cmd: None,
             io_pad: None,
             desc_list: FSdifIDmaDescList::new(),
-            gic_handler: Gic::interrput_early_init(),
-            evt_handler: [None; FSDIF_NUM_OF_EVT],
-            evt_args: [const { None }; FSDIF_NUM_OF_EVT],
+            // gic_handler: Gic::interrput_early_init(),
+            evt_arg: None,
         }
     }
 
@@ -84,12 +80,12 @@ impl MCI {
         &self.config
     }
 
-    pub(crate) fn gic_handler_mut(&mut self) -> &mut Gic {
-        &mut self.gic_handler
-    }
+    // pub(crate) fn gic_handler_mut(&mut self) -> &mut Gic {
+    //     &mut self.gic_handler
+    // }
 
-    pub(crate) fn cur_cmd(&self) -> &Option<MCICmdData> {
-        &self.cur_cmd
+    pub(crate) fn cur_cmd(&self) -> Option<&MCICmdData> {
+        self.cur_cmd.as_ref()
     }
 
     pub(crate) fn cur_cmd_index(&self) -> isize {
@@ -120,15 +116,6 @@ impl MCI {
 
     pub fn iopad_take(&mut self) -> Option<IoPad> {
         self.io_pad.take()
-    }
-
-    pub fn evt_handler(&self) -> &[Option<FSdifEvtHandler>; FSDIF_NUM_OF_EVT] {
-        &self.evt_handler
-    }
-
-    pub fn evt_handler_set(&mut self, evt: FSdifEvtType, _handler: Option<FSdifEvtHandler>, param: NonNull<u8>) {
-        // self.evt_handler[evt as usize] = handler;
-        self.evt_args[evt as usize] = Some(param);
     }
 
     // todo 避免所有权问题先用了clone

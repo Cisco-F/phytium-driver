@@ -10,7 +10,6 @@ use dma_api::DSlice;
 use log::*;
 
 use crate::aarch::dsb;
-use crate::irq::cpu::get_cpu_id;
 use crate::mci::regs::{IrqTempRegister, MCICardDetect, MCIDMACIntEn, MCIDMACStatus, MCIIntMask, MCIRawInts};
 use crate::mci::mci_data::MCIData;
 use crate::mci::{self, MCICmdData, MCIConfig, MCI};
@@ -18,7 +17,7 @@ use crate::mci_host::mci_host_card_detect::MCIHostCardDetect;
 use crate::mci_host::mci_host_config::*;
 use crate::mci_host::mci_host_transfer::MCIHostTransfer;
 use crate::mci_host::MCIHostCardIntFn;
-use crate::osa::consts::SDMMC_OSA_EVENT_TRANSFER_CMD_SUCCESS;
+use crate::osa::consts::{SDMMC_OSA_EVENT_CARD_INSERTED, SDMMC_OSA_EVENT_TRANSFER_CMD_SUCCESS};
 use crate::osa::{osa_alloc_aligned, OSAEvent};
 use crate::osa::pool_buffer::PoolBuffer;
 use crate::sd::consts::SD_BLOCK_SIZE;
@@ -64,9 +63,15 @@ impl SDIFDev {
     pub fn iopad_set(&self,iopad:IoPad) {
         self.hc.borrow_mut().iopad_set(iopad);
     }
+    pub fn event_set(&self, event: u32) {
+        self.hc_evt.borrow_mut().osa_event_set(event);
+    }
+}
 
-    fn card_detected(&mut self) {
-        self.hc_evt.borrow_mut().osa_event_set(SDMMC_OSA_EVENT_TRANSFER_CMD_SUCCESS);
+/// Auxilary functions
+impl SDIFDev {
+    pub fn whether_transfer_data(&self) -> bool {
+        self.hc.borrow().cur_cmd().as_ref().unwrap().get_data().is_some()
     }
 }
 

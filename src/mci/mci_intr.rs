@@ -1,8 +1,15 @@
+use core::ptr::NonNull;
+
 use log::debug;
 use log::error;
 use log::warn;
 
 use crate::mci_sdif::sdif_device::SDIFDev;
+use crate::osa::consts::SDMMC_OSA_EVENT_CARD_INSERTED;
+use crate::osa::consts::SDMMC_OSA_EVENT_TRANSFER_CMD_FAIL;
+use crate::osa::consts::SDMMC_OSA_EVENT_TRANSFER_CMD_SUCCESS;
+use crate::osa::consts::SDMMC_OSA_EVENT_TRANSFER_DATA_FAIL;
+use crate::osa::consts::SDMMC_OSA_EVENT_TRANSFER_DATA_SUCCESS;
 
 use super::MCI;
 use super::consts::*;
@@ -78,7 +85,7 @@ impl MCI {
             !self.config().non_removable() 
         {
             warn!("SD status changed here! status:[{}]", reg.read_reg::<MCICardDetect>().bits());
-            // self.call_event_handler(FSdifEvtType::CardDetected, events.bits(), dmac_events.bits());
+            self.card_detected();
         }
 
         // handle error state
@@ -117,11 +124,93 @@ impl MCI {
         }
     }
 
-    // fn card_detected(&mut self) {
-    //     let evt_type = FSdifEvtType::CardDetected as usize;
-    //     let dev = match &self.evt_args[evt_type] {
-    //         Some(addr) => unsafe { NonNull::new_unchecked(addr.as_ptr() as *mut SDIFDev).as_ref() },
-    //         None => panic!(),
-    //     };
-    // }
+    fn card_detected(&self) {
+        let dev = match &self.evt_arg {
+            Some(addr) => unsafe { NonNull::new_unchecked(addr.as_ptr() as *mut SDIFDev).as_ref() },
+            None => panic!(),
+        };
+        dev.event_set(SDMMC_OSA_EVENT_CARD_INSERTED);
+    }
+
+    fn cmd_done(&self) {
+        let dev = match &self.evt_arg {
+            Some(addr) => unsafe { NonNull::new_unchecked(addr.as_ptr() as *mut SDIFDev).as_ref() },
+            None => panic!(),
+        };
+        dev.event_set(SDMMC_OSA_EVENT_TRANSFER_CMD_SUCCESS);
+    }
+
+    fn data_done(&self, status: u32, dmac_status: u32) {
+        let dev = match &self.evt_arg {
+            Some(addr) => unsafe { NonNull::new_unchecked(addr.as_ptr() as *mut SDIFDev).as_ref() },
+            None => panic!(),
+        };
+
+        let check_status = status & (
+            MCIRawInts::DTO_BIT      // Data transfer over
+                | MCIRawInts::RCRC_BIT    // Response CRC error
+                | MCIRawInts::DCRC_BIT    // Data CRC error
+                | MCIRawInts::RE_BIT      // Response error
+                | MCIRawInts::DRTO_BIT    // Data read timeout
+                | MCIRawInts::EBE_BIT     // End-bit error
+                | MCIRawInts::SBE_BCI_BIT // Start-bit error
+                | MCIRawInts::RTO_BIT     // Response timeout
+        ).bits();
+        let check_dmac = dmac_status & (MCIDMACIntEn::AIS | MCIDMACIntEn::DU).bits();
+
+        if !dev.whether_transfer_data() {
+            dev.event_set(SDMMC_OSA_EVENT_TRANSFER_DATA_SUCCESS);
+        } else if check_status | check_dmac != 0 {
+            if check_status & MCIRawInts::DTO_BIT.bits() != 0 {
+                dev.event_set(SDMMC_OSA_EVENT_TRANSFER_DATA_SUCCESS);
+            } else {
+                error!("transfer data error: 0x{:x}, dmac status: 0x{:x}", check_status, check_dmac);
+            }
+        }
+    }
+
+    fn error_occur(&self, status: u32, dmac_status: u32) {
+        let dev = match &self.evt_arg {
+            Some(addr) => unsafe { NonNull::new_unchecked(addr.as_ptr() as *mut SDIFDev).as_ref() },
+            None => panic!(),
+        };
+
+        warn!("Error occur!!!");
+        warn!("status: 0x{:x}, dmac status: 0x{:x}", status, dmac_status);
+
+        if status & MCIRawInts::RE_BIT.bits() != 0 {
+            warn!("response error! 0x{:x}", MCIRawInts::RE_BIT.bits());
+        }
+        
+        if status & MCIRawInts::RTO_BIT.bits() != 0 {
+            warn!("response timeout! 0x{:x}", MCIRawInts::RTO_BIT.bits());
+        }
+        
+        if status & MCIRawInts::DCRC_BIT.bits() != 0 {
+            warn!("data crc error! 0x{:x}", MCIRawInts::DCRC_BIT.bits());
+        }
+
+        if status & MCIRawInts::RCRC_BIT.bits() != 0 {
+            warn!("data crc error! 0x{:x}", MCIRawInts::RCRC_BIT.bits());
+        }
+
+        if dmac_status & MCIDMACIntEn::DU.bits() != 0 {
+            warn!("Descriptor un-readable! 0x{:x}", MCIDMACIntEn::DU.bits());
+        }
+
+        self.register_dump();
+
+        if status & MCIRawInts::RE_BIT.bits() != 0 ||
+            status & MCIRawInts::RTO_BIT.bits() != 0 
+        {
+            dev.event_set(SDMMC_OSA_EVENT_TRANSFER_CMD_FAIL);
+        }
+
+        if dmac_status & MCIDMACIntEn::DU.bits() != 0 || 
+            status & MCIRawInts::DCRC_BIT.bits() != 0 || 
+            status & MCIRawInts::RCRC_BIT.bits() != 0
+        {
+            dev.event_set(SDMMC_OSA_EVENT_TRANSFER_DATA_FAIL);
+        }
+    }
 }
