@@ -159,7 +159,7 @@ impl MCIHostCurrentState {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum MCIHostOperationVoltage {
+pub enum MCIHostOperationVoltage {
     None = 0,
     Voltage330V = 1,
     Voltage300V = 2,
