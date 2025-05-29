@@ -17,26 +17,20 @@ pub struct MCIConfig {
 }
 
 impl MCIConfig {
-    #[cfg(feature="dma")]
     pub fn new(addr: NonNull<u8>) -> Self {
-        Self {
-            instance_id: MCIId::MCI1,
-            reg: MCIReg::new(addr),
-            irq_num: 105,
-            trans_mode: MCITransMode::DMA,
-            non_removable: false,
-        }
-    }
-
-    #[cfg(feature="pio")]
-    pub fn new(addr: NonNull<u8>) -> Self {
-        Self {
+        let mut config = Self {
             instance_id: MCIId::MCI0,
             reg: MCIReg::new(addr),
             irq_num: 104,
-            trans_mode: MCITransMode::PIO,
+            trans_mode: MCITransMode::DMA,
             non_removable: false,
+        };
+        
+        if cfg!(feature="pio") {
+            config.trans_mode = MCITransMode::PIO;
         }
+
+        config
     }
 
     /* Get the device instance default configure  */
