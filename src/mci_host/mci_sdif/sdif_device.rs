@@ -96,14 +96,6 @@ impl MCIHostDevice for SDIFDev {
             return Err(MCIHostError::Fail);
         }
 
-        // if host.config.enable_irq {
-        //     if self.hc.get_mut().setup_irq().is_err() {
-        //         error!("setup irq failed!");
-        //         return Err(MCIHostError::IrqInitFailed);
-        //     }
-        //     // self.hc.get_mut().register_event_handler(FSdifEvtType::CardDetected, Some(()))
-        // }
-
         if host.config.enable_dma {
             if let Err(_) = self.hc.borrow_mut().set_idma_list(&self.rw_desc, self.desc_num.get()) {
                 error!("idma list set failed!");
