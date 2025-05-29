@@ -13,7 +13,7 @@ mod mci_cmddata;
 mod mci_pio;
 pub mod mci_dma;
 
-use alloc::{boxed::Box, vec::Vec};
+use alloc::vec::Vec;
 use dma_api::DSlice;
 use err::*;
 use consts::*;
@@ -25,7 +25,7 @@ pub use mci_cmddata::*;
 pub use mci_config::*;
 pub use mci_timing::*;
 
-use crate::{aarch::dsb, osa::pool_buffer::PoolBuffer, regs::*, sleep, FSdifEvtHandler, IoPad, MCIHostDevice};
+use crate::{aarch::dsb, osa::pool_buffer::PoolBuffer, regs::*, sleep, IoPad};
 use core::{ptr::NonNull, time::Duration};
 
 pub struct MCI {

@@ -90,11 +90,9 @@ impl OSAEvent {
             handle: Semaphore::new(0),
         }
     }
-    pub fn osa_event_set(&mut self, event_type: u32) -> Result<(), &'static str> {
+    pub fn osa_event_set(&mut self, event_type: u32){
         self.event_flag |= event_type;
         self.handle.up();
-
-        Ok(())
     }
     pub fn osa_event_wait(&self, event_type: u32, _timeout_ms: u32, event: &mut u32, flags: u32) -> Result<(), &'static str> {
         self.handle.down();

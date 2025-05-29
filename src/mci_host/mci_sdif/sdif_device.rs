@@ -4,20 +4,18 @@ use core::ptr::NonNull;
 use core::time::Duration;
 
 use alloc::vec::Vec;
-use bare_test::driver::intc::{IrqConfig, Trigger};
-use bare_test::irq::{IrqHandleResult, IrqParam};
 use dma_api::DSlice;
 use log::*;
 
 use crate::aarch::dsb;
-use crate::mci::regs::{IrqTempRegister, MCICardDetect, MCIDMACIntEn, MCIDMACStatus, MCIIntMask, MCIRawInts};
+use crate::mci::regs::MCIIntMask;
 use crate::mci::mci_data::MCIData;
-use crate::mci::{self, MCICmdData, MCIConfig, MCI};
+use crate::mci::{MCICmdData, MCIConfig, MCI};
 use crate::mci_host::mci_host_card_detect::MCIHostCardDetect;
 use crate::mci_host::mci_host_config::*;
 use crate::mci_host::mci_host_transfer::MCIHostTransfer;
 use crate::mci_host::MCIHostCardIntFn;
-use crate::osa::consts::{SDMMC_OSA_EVENT_CARD_INSERTED, SDMMC_OSA_EVENT_TRANSFER_CMD_SUCCESS};
+use crate::osa::consts::SDMMC_OSA_EVENT_TRANSFER_CMD_SUCCESS;
 use crate::osa::{osa_alloc_aligned, OSAEvent};
 use crate::osa::pool_buffer::PoolBuffer;
 use crate::sd::consts::SD_BLOCK_SIZE;
@@ -483,7 +481,7 @@ impl MCIHostDevice for SDIFDev {
 
     #[cfg(feature="irq")]
     fn transfer_function(&self, content: &mut MCIHostTransfer, host: &MCIHost) -> MCIHostStatus {
-        use crate::{aarch::invalidate, osa::consts::{FSDIF_TRANS_ERR_EVENTS, SDMMC_OSA_EVENT_FLAG_AND, SDMMC_OSA_EVENT_FLAG_OR, SDMMC_OSA_EVENT_TRANSFER_DATA_SUCCESS}};
+        use crate::osa::consts::{FSDIF_TRANS_ERR_EVENTS, SDMMC_OSA_EVENT_FLAG_AND, SDMMC_OSA_EVENT_FLAG_OR, SDMMC_OSA_EVENT_TRANSFER_DATA_SUCCESS};
 
         self.pre_command(content, host)?;
         let mut cmd_data = self.covert_command_info(content);
@@ -518,7 +516,7 @@ impl MCIHostDevice for SDIFDev {
         // check if any error events
         let err_events = FSDIF_TRANS_ERR_EVENTS;
         events = 0;
-        self.hc_evt.borrow_mut().osa_event_wait(err_events, 0, &mut events, SDMMC_OSA_EVENT_FLAG_OR);
+        let _ = self.hc_evt.borrow_mut().osa_event_wait(err_events, 0, &mut events, SDMMC_OSA_EVENT_FLAG_OR);
         if events != 0 {
             error!("finish command with error 0x{:x}", events);
             self.hc.borrow_mut().register_dump();
@@ -527,15 +525,15 @@ impl MCIHostDevice for SDIFDev {
         }
 
         //TODO 这里的CLONE 会降低驱动速度,需要解决这个性能问题 可能Take出来直接用更好
-        if let Some(_) = content.data() {
-            let data = cmd_data.get_data().unwrap();
-            unsafe { invalidate(data.buf().unwrap().as_ptr() as *const u8, data.buf().unwrap().len() * 4); }
-            if let Some(rx_data) = data.buf() {
-                if let Some(in_data) = content.data_mut() {
-                    in_data.rx_data_set(Some(rx_data.clone()));
-                }
-            }
-        }
+        // if let Some(_) = content.data() {
+        //     let data = cmd_data.get_data().unwrap();
+        //     unsafe { invalidate(data.buf().unwrap().as_ptr() as *const u8, data.buf().unwrap().len() * 4); }
+        //     if let Some(rx_data) = data.buf() {
+        //         if let Some(in_data) = content.data_mut() {
+        //             in_data.rx_data_set(Some(rx_data.clone()));
+        //         }
+        //     }
+        // }
 
         // in PIO mode, read PIO data after recv DTO flag
         if let Err(_) = self.hc.borrow_mut().cmd_response_get(&mut cmd_data) {
@@ -550,7 +548,9 @@ impl MCIHostDevice for SDIFDev {
             }
         }
 
-        //todo check response error flags?
+        if  content.cmd().unwrap().response()[0] & content.cmd().unwrap().response_error_flags().bits() != 0 {
+            return Err(MCIHostError::Fail);
+        }
 
         Ok(())
     }

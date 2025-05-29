@@ -12,7 +12,7 @@ mod mci_host_card_detect;
 
 use core::{cell::Cell, ptr::NonNull};
 
-use alloc::{boxed::Box, rc::Rc, sync::{Arc, Weak}};
+use alloc::{boxed::Box, rc::Rc, sync::Arc};
 
 use bare_test::{driver::intc::{IrqConfig, Trigger}, irq::{IrqHandleResult, IrqParam}};
 use constants::*;
