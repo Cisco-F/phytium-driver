@@ -77,7 +77,7 @@ impl MCI {
         // handle sdio irq
         if (events.bits() & event_mask.bits()) & MCIRawInts::SDIO_BIT.bits() != 0 {
             warn!("SDIO interrupt here!");
-            // self.call_event_handler(FSdifEvtType::SdioIrq, events.bits(), dmac_events.bits());
+            self.sdio_interrupt();
         }
 
         // handle card detect event
@@ -101,7 +101,7 @@ impl MCI {
                 "ERR: events: 0x{:x}, mask: 0x{:x}, dmac_evts: 0x{:x}, dmac_mask: {:x}",
                 events.bits(), event_mask.bits(), dmac_events.bits(), dmac_evt_mask.bits()
             );
-            // self.call_event_handler(FSdifEvtType::ErrOccured, events.bits(), dmac_events.bits());
+            self.error_occur(events.bits(), dmac_events.bits());
         }
 
         // handle cmd && data done
@@ -109,18 +109,18 @@ impl MCI {
             events.contains(MCIRawInts::CMD_BIT)
         {
             warn!("cmd and data over!");
-            // self.call_event_handler(FSdifEvtType::CmdDone, events.bits(), dmac_events.bits());
-            // self.call_event_handler(FSdifEvtType::DataDone, events.bits(), dmac_events.bits());
+            self.cmd_done();
+            self.data_done(events.bits(), dmac_events.bits());
         } 
         else if events.contains(MCIRawInts::CMD_BIT) ||
             (events.contains(MCIRawInts::HTO_BIT) && self.cur_cmd_index() == MCI::SWITCH_VOLTAGE as isize) // handle cmd done
         {
             warn!("cmd over!");
-            // self.call_event_handler(FSdifEvtType::CmdDone, events.bits(), dmac_events.bits());
+            self.cmd_done();
         }
         else if events.contains(MCIRawInts::DTO_BIT) { // handle data done
             warn!("data over!");
-            // self.call_event_handler(FSdifEvtType::DataDone, events.bits(), dmac_events.bits());
+            self.data_done(events.bits(), dmac_events.bits());
         }
     }
 
@@ -212,5 +212,9 @@ impl MCI {
         {
             dev.event_set(SDMMC_OSA_EVENT_TRANSFER_DATA_FAIL);
         }
+    }
+
+    fn sdio_interrupt(&self) {
+
     }
 }

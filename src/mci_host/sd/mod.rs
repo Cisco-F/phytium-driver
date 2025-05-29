@@ -12,7 +12,6 @@ use core::ptr::NonNull;
 use core::str;
 use alloc::boxed::Box;
 use alloc::rc::Rc;
-use alloc::sync::Arc;
 use alloc::vec::Vec;
 use alloc::vec;
 use io_voltage::SdIoVoltage;
