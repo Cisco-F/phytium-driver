@@ -4,6 +4,7 @@ use core::ptr::NonNull;
 use core::time::Duration;
 
 use alloc::vec::Vec;
+use bare_test::irq::IrqHandleResult;
 use dma_api::DSlice;
 use log::*;
 
@@ -64,6 +65,12 @@ impl SDIFDev {
     pub fn event_set(&self, event: u32) {
         self.hc_evt.borrow_mut().osa_event_set(event);
     }
+
+    pub fn register_event_arg(&self) {
+        info!("registering event arg");
+        let self_ptr = unsafe { NonNull::new_unchecked(self as *const _ as *mut u8) };
+        self.hc.borrow_mut().register_event_arg(self_ptr);
+    }
 }
 
 /// Auxilary functions
@@ -77,7 +84,8 @@ impl MCIHostDevice for SDIFDev {
     fn init(&self, addr: NonNull<u8>,host:&MCIHost) -> MCIHostStatus {
         let num_of_desc = host.config.max_trans_size/host.config.def_block_size;
         self.desc_num.set(num_of_desc as u32);
-        self.do_init(addr,host)
+        self.do_init(addr,host)?;
+        Ok(())
     }
 
     fn do_init(&self,addr: NonNull<u8>,host:&MCIHost) -> MCIHostStatus {
@@ -103,6 +111,7 @@ impl MCIHostDevice for SDIFDev {
             }
         }
 
+        self.register_event_arg();
         *self.hc_cfg.borrow_mut() = mci_config;
         Ok(())
     }
@@ -488,13 +497,14 @@ impl MCIHostDevice for SDIFDev {
             }
         }
 
+        info!("cmd send!!!");
         let complete_events = if cmd_data.get_data().is_some() {
             SDMMC_OSA_EVENT_TRANSFER_CMD_SUCCESS | SDMMC_OSA_EVENT_TRANSFER_DATA_SUCCESS
         } else {
             SDMMC_OSA_EVENT_TRANSFER_CMD_SUCCESS
         };
         let mut events: u32 = 0;
-        if self.hc_evt.borrow_mut().osa_event_wait(complete_events, COMMAND_TIMEOUT, &mut events, SDMMC_OSA_EVENT_FLAG_AND).is_err() ||
+        if self.hc_evt.borrow().osa_event_wait(complete_events, COMMAND_TIMEOUT, &mut events, SDMMC_OSA_EVENT_FLAG_AND).is_err() ||
             events != complete_events
         {
             error!("wait command done timeout!");
@@ -547,7 +557,11 @@ impl MCIHostDevice for SDIFDev {
         Ok(())
     }
 
-    fn fsdif_interrupt_handler(&self) {
-        self.hc.borrow_mut().fsdif_interrupt_handler();
+    // fn register_event_arg(&self, arg: NonNull<u8>) {
+    //     self.hc.borrow_mut().register_event_arg(arg);
+    // }
+
+    fn fsdif_interrupt_handler(&self) -> IrqHandleResult {
+        self.hc.borrow_mut().fsdif_interrupt_handler()
     }
 }

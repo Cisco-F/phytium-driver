@@ -338,7 +338,7 @@ impl SdCard{
     }
 
     fn bus_voltage_prob(&mut self) -> MCIHostStatus {
-
+        info!("probing bus voltage");
         /* 3.3V voltage should be supported as default */
         let mut acmd41_argument = {
             MCIHostOCR::VDD_29_30 | MCIHostOCR::VDD_32_33 | MCIHostOCR::VDD_33_34

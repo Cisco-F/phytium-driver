@@ -2,7 +2,7 @@ use core::{alloc::Layout, mem::MaybeUninit, ptr::NonNull};
 
 use consts::{MAX_POOL_SIZE, SDMMC_OSA_EVENT_FLAG_AND};
 use err::FMempError;
-use log::error;
+use log::{error, info};
 use pool_buffer::PoolBuffer;
 use rlsf::Tlsf;
 use semaphore::Semaphore;
@@ -95,6 +95,7 @@ impl OSAEvent {
         self.handle.up();
     }
     pub fn osa_event_wait(&self, event_type: u32, _timeout_ms: u32, event: &mut u32, flags: u32) -> Result<(), &'static str> {
+        info!("waiting event");
         self.handle.down();
 
         *event = self.osa_event_get();

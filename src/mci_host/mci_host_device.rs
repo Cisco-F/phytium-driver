@@ -2,6 +2,7 @@ use core::ptr::NonNull;
 
 use alloc::boxed::Box;
 use alloc::vec::Vec;
+use bare_test::irq::IrqHandleResult;
 
 use crate::mci::MCICmdData;
 
@@ -53,7 +54,8 @@ pub trait MCIHostDevice {
     fn covert_command_info(&self, in_trans: &mut MCIHostTransfer) -> MCICmdData;
     fn transfer_function(&self, content: &mut MCIHostTransfer, host:&MCIHost) -> MCIHostStatus;
 
-    fn fsdif_interrupt_handler(&self);
+    // fn register_event_arg(&self, arg: NonNull<u8>);
+    fn fsdif_interrupt_handler(&self) -> IrqHandleResult;
 
     /* boot related functions */
     // todo 永远不会用到它们
