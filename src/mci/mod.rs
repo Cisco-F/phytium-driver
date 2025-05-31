@@ -102,6 +102,10 @@ impl MCI {
         }
     }
 
+    pub(crate) fn register_event_arg(&mut self, arg: NonNull<u8>) {
+        self.evt_arg = Some(arg);
+    }
+
     // pub(crate) fn evt_args(&self, evt: FSdifEvtType) -> &Option<Box<dyn MCIHostDevice>> {
     //     &self.evt_args[evt as usize]
     // }
@@ -303,7 +307,7 @@ impl MCI {
 
         // transfer command
         self.cmd_transfer(&cmd_data)?;
-
+        info!("dma cmd transfer ok");
         Ok(())
     }
 

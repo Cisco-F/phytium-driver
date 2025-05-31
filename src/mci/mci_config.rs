@@ -30,7 +30,16 @@ impl MCIConfig {
             config.trans_mode = MCITransMode::PIO;
         }
 
+        config.clear_irq();
+
         config
+    }
+
+    fn clear_irq(&self) {
+        let raw_ints = self.reg.read_reg::<MCIRawInts>();
+        let dmac_status = self.reg.read_reg::<MCIDMACStatus>();
+        self.reg.write_reg(raw_ints);
+        self.reg.write_reg(dmac_status);
     }
 
     /* Get the device instance default configure  */
