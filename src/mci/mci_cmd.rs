@@ -25,14 +25,14 @@ impl MCI {
         let cmd_reg = MCICmd::START | cmd;
         info!("writing cmd reg");
         reg.write_reg(cmd_reg);
+        self.interrupt_mask_set(MCIIntrType::GeneralIntr, MCIIntMask::INTS_DATA_MASK.bits(), true);
+        self.interrupt_mask_set(MCIIntrType::DmaIntr, MCIDMACIntEn::INTS_MASK.bits(), true);
         info!("after write reg");
 
         reg.retry_for(|reg:MCICmd|{
             !reg.contains(MCICmd::START)
         }, Some(RETRIES_TIMEOUT))?;
 
-        self.interrupt_mask_set(MCIIntrType::GeneralIntr, MCIIntMask::INTS_DATA_MASK.bits(), true);
-        self.interrupt_mask_set(MCIIntrType::DmaIntr, MCIDMACIntEn::INTS_MASK.bits(), true);
         info!("private cmd ok");
         Ok(())
     }
