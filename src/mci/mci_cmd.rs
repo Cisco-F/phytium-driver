@@ -10,6 +10,8 @@ use super::regs::*;
 
 impl MCI {
     pub(crate) fn private_cmd_send(&self,cmd:MCICmd, arg: u32) -> MCIResult{
+        // self.interrupt_mask_set(MCIIntrType::GeneralIntr, MCIIntMask::INTS_DATA_MASK.bits(), false);
+        self.clear_interrupt_status();
         let reg = self.config.reg();
 
         reg.retry_for(|reg: MCIStatus| {
@@ -19,13 +21,19 @@ impl MCI {
 
         unsafe { dsb() };/* drain writebuffer */
 
+        info!("raw ints 0x{:x}", reg.read_reg::<MCIRawInts>().bits());
         let cmd_reg = MCICmd::START | cmd;
-        
+        info!("writing cmd reg");
         reg.write_reg(cmd_reg);
+        info!("after write reg");
+
         reg.retry_for(|reg:MCICmd|{
             !reg.contains(MCICmd::START)
         }, Some(RETRIES_TIMEOUT))?;
 
+        self.interrupt_mask_set(MCIIntrType::GeneralIntr, MCIIntMask::INTS_DATA_MASK.bits(), true);
+        self.interrupt_mask_set(MCIIntrType::DmaIntr, MCIDMACIntEn::INTS_MASK.bits(), true);
+        info!("private cmd ok");
         Ok(())
     }
 
@@ -92,6 +100,7 @@ impl MCI {
         debug!("    arg: 0x{:x}", cmd_data.cmdarg());
         /* enable related interrupt */
         self.interrupt_mask_set(MCIIntrType::GeneralIntr, MCIIntMask::INTS_CMD_MASK.bits(), true);
+        info!("sending private cmd");
         self.private_cmd_send(raw_cmd, cmd_data.cmdarg())?;
         Ok(())
     }

@@ -1,5 +1,6 @@
 use core::ptr::NonNull;
 
+use bare_test::irq::IrqHandleResult;
 use log::debug;
 use log::error;
 use log::warn;
@@ -45,7 +46,8 @@ impl MCI {
     }
 
     /// Interrupt handler for SDIF instance
-    pub fn fsdif_interrupt_handler(&mut self) {
+    pub fn fsdif_interrupt_handler(&mut self) -> IrqHandleResult {
+        warn!("captured irq!");
         let reg = self.config().reg();
 
         let events = reg.read_reg::<MCIRawInts>();
@@ -53,17 +55,23 @@ impl MCI {
         let event_mask = reg.read_reg::<MCIIntMask>();
         let dmac_evt_mask = reg.read_reg::<MCIDMACIntEn>();
 
+        warn!("raw ints reg: 0x{:x}, dmac status: 0x{:x}", events.bits(), dmac_events.bits());
+
         // no interrupt status
-        if !events.contains(MCIRawInts::ALL_BITS) && !dmac_events.contains(MCIDMACStatus::ALL_BITS) {
+        if (events.bits() & MCIRawInts::ALL_BITS.bits() == 0) && (dmac_events.bits() & MCIDMACStatus::ALL_BITS.bits() == 0) {
             warn!("irq exit with no action");
-            return;
+            reg.write_reg::<MCIRawInts>(events);
+            reg.write_reg::<MCIDMACStatus>(dmac_events);
+            return IrqHandleResult::Handled;
         }
 
         reg.write_reg::<IrqTempRegister>(IrqTempRegister::from_bits_truncate(0));
 
         // no need to handle interrput
-        if (events.bits() == 0) && !dmac_events.contains(MCIDMACStatus::from_bits_truncate(0x1FFF)) {
-            return;
+        if (events.bits() == 0) && (dmac_events.bits() & 0x1FFF == 0) {
+            reg.write_reg::<MCIRawInts>(events);
+            reg.write_reg::<MCIDMACStatus>(dmac_events);
+            return IrqHandleResult::Handled;
         }
 
         debug!("events:0x{:x},mask:0x{:x},dmac_events:{:x},dmac_mask:0x{:x}", events, event_mask, dmac_events, dmac_evt_mask);
@@ -122,6 +130,8 @@ impl MCI {
             warn!("data over!");
             self.data_done(events.bits(), dmac_events.bits());
         }
+
+        IrqHandleResult::Handled
     }
 
     fn card_detected(&self) {

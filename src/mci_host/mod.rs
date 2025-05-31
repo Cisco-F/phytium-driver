@@ -17,11 +17,13 @@ use alloc::{boxed::Box, rc::Rc, sync::Arc};
 use bare_test::{driver::intc::{IrqConfig, Trigger}, irq::{IrqHandleResult, IrqParam}};
 use constants::*;
 use err::{MCIHostError, MCIHostStatus};
+use log::info;
 use mci_host_card_detect::MCIHostCardDetect;
 use mci_host_config::MCIHostConfig;
 pub use mci_host_device::MCIHostDevice;
 use mci_host_transfer::{MCIHostCmd, MCIHostTransfer};
 pub use mci_host_device::FSdifEvtHandler;
+use mci_sdif::sdif_device::SDIFDev;
 
 type MCIHostCardIntFn = fn();
 
@@ -220,6 +222,7 @@ impl MCIHost {
     }
 
     pub fn setup_irq(&mut self) -> Result<(), &'static str> {
+        info!("setting irq");
         let irq_num = 104;
         let dev_arc = Arc::clone(&self.dev);
         IrqParam {
@@ -231,12 +234,15 @@ impl MCIHost {
         }
         .register_builder({
             move |_irq| {
-                dev_arc.fsdif_interrupt_handler();
-                IrqHandleResult::Handled
+                info!("mark");
+                dev_arc.fsdif_interrupt_handler()
+                // info!("mark2");
+                // IrqHandleResult::Handled
             }
         })
         .register();
 
+        info!("irq set up ok!");
         Ok(())
     }
     pub fn fsdif_interrupt_handler(&self) {
