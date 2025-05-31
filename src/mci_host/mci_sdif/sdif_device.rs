@@ -433,6 +433,7 @@ impl MCIHostDevice for SDIFDev {
     #[cfg(feature="poll")]
     fn transfer_function(&self,content: &mut MCIHostTransfer, host:&MCIHost) -> MCIHostStatus {
         use crate::mci_host::err;
+        use crate::aarch::invalidate;
 
         self.pre_command(content,host)?;
         let mut cmd_data = self.covert_command_info(content);
