@@ -79,15 +79,15 @@ impl SdCard {
         let desc_num = mci_host_config.max_trans_size / mci_host_config.def_block_size;
         let sdif_device = SDIFDev::new(addr, desc_num);
         sdif_device.iopad_set(iopad);
-        let mut host = MCIHost::new(Box::new(sdif_device) as Box<dyn MCIHostDevice>, mci_host_config);
+        let host = MCIHost::new(Box::new(sdif_device) as Box<dyn MCIHostDevice>, mci_host_config);
         let host_type = host.config.host_type;
 
-        if mci_host_config.enable_irq {
-            if let Err(e) = host.setup_irq() {
-                error!("set up irq failed! err: {:?}", e);
-                panic!();
-            }
-        }
+        // if mci_host_config.enable_irq {
+        //     if let Err(e) = host.setup_irq() {
+        //         error!("set up irq failed! err: {:?}", e);
+        //         panic!();
+        //     }
+        // }
 
         // 初步组装 SdCard
         let mut sd_card = SdCard::from_base(base);
@@ -473,6 +473,13 @@ impl SdCard{
         if cd.typ == MCIHostDetectCardType::ByGpioCD || cd.typ == MCIHostDetectCardType::ByHostDATA3 {
             info!("SD card init start");
             let _ = host.dev.card_detect_init(cd);
+        }
+
+        if host.config.enable_irq {
+            if let Err(e) = self.base.host.as_mut().unwrap().setup_irq() {
+                error!("set up irq failed! err: {:?}", e);
+                panic!();
+            }
         }
 
         /* set the host status flag, after the card re-plug in, don't need init host again */

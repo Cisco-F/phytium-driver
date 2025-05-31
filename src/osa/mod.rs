@@ -96,8 +96,19 @@ impl OSAEvent {
     }
     pub fn osa_event_wait(&self, event_type: u32, _timeout_ms: u32, event: &mut u32, flags: u32) -> Result<(), &'static str> {
         info!("waiting event");
-        self.handle.down();
 
+        // *event = self.osa_event_get();
+        // if flags & SDMMC_OSA_EVENT_FLAG_AND != 0 {
+        //     if *event == event_type {
+        //         return Ok(());
+        //     }
+        // } else {
+        //     if *event & event_type != 0 {
+        //         return Ok(());
+        //     }
+        // }
+
+        self.handle.down();
         *event = self.osa_event_get();
         if flags & SDMMC_OSA_EVENT_FLAG_AND != 0 {
             if *event == event_type {
