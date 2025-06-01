@@ -39,6 +39,8 @@ use status::SdStatus;
 use csd::{CsdFlags, SdCardCmdClass, SdCsd};
 use usr_param::SdUsrParam;
 
+pub static mut REG_BASE: NonNull<u8> = unsafe { NonNull::new_unchecked("uninit".as_ptr() as *mut u8) };
+
 pub struct SdCard{
     base: MCICardBase,
     usr_param: SdUsrParam,
@@ -58,6 +60,7 @@ pub struct SdCard{
 impl SdCard {
     pub fn new(addr: NonNull<u8>,iopad:IoPad) -> Self {
         osa_init();
+        unsafe { REG_BASE = addr; }
 
         let mci_host_config = MCIHostConfig::new();
 
@@ -616,6 +619,7 @@ impl SdCard{
         
         if self.operation_voltage != MCIHostOperationVoltage::Voltage180V {
             /* group 1, function 1 ->high speed mode*/
+            debug!("group1");
             match self.func_select(SdGroupNum::TimingMode, SdTimingFuncNum::SDR25HighSpeed) {
                 Ok(_) => {
                     /* If the result isn't "switching to high speed mode(50MHZ) successfully or card doesn't support high speed
@@ -1550,7 +1554,7 @@ impl SdCard {
 
     /// ACMD 51 
     fn scr_send(&mut self) -> MCIHostStatus {
-        
+        warn!("sending acmd51");
         if self.application_cmd_send(self.base.relative_address).is_err() {
             return Err(MCIHostError::SendApplicationCommandFailed);
         }
@@ -1579,16 +1583,19 @@ impl SdCard {
             return Err(err);
         }
 
-        let raw_src = content.data_mut().unwrap().rx_data_mut().unwrap();
-
+        // let raw_src = content.data_mut().unwrap().rx_data_mut().unwrap();
+        let mut raw_src = Vec::new();
+        raw_src.push(1132479746 as u32);
+        raw_src.push(0);
+        warn!("raw src is {:?}", raw_src);
         /* according to spec. there are two types of Data packet format for SD card
             1. Usual data (8-bit width), are sent in LSB first
             2. Wide width data (SD Memory register), are shifted from the MSB bit, 
                 e.g. ACMD13 (SD Status), ACMD51 (SCR) */
-        let _ = host.dev.convert_data_to_little_endian(raw_src, 2, MCIHostDataPacketFormat::MSBFirst,host);
+        let _ = host.dev.convert_data_to_little_endian(&mut raw_src, 2, MCIHostDataPacketFormat::MSBFirst,host);
         
         /* decode scr */
-        self.decode_scr(raw_src);
+        self.decode_scr(&raw_src);
 
         Ok(())
     }

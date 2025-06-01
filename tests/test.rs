@@ -12,7 +12,7 @@ mod tests {
     use bare_test::{
         globals::{global_val, PlatformInfoKind},
         mem::mmu::iomap,
-        time::spin_delay,
+        time::spin_delay, GetIrqConfig,
     };
     use log::*;
     use phytium_mci::{iopad::PAD_ADDRESS, sd::SdCard, *};
@@ -30,13 +30,33 @@ mod tests {
         };
 
         let mci0 = fdt.find_compatible(&["phytium,mci"]).next().unwrap();
+        let intr = mci0.interrupts().unwrap().next().unwrap().next().unwrap();
+        let prop = mci0.propertys().next().unwrap();
+        let name = prop.name;
+        info!("intr {}", intr);
+        info!("propety name {}", name);
+
+        let info= mci0.irq_info().unwrap();
+        info!("irq parent {:?}", info.irq_parent);
+        
+        let parent = mci0.interrupt_parent().unwrap().node;
+        let p_name = parent.name;
+        let a = parent.interrupts().unwrap().next().unwrap().next().unwrap();
+        info!("p name {}", p_name);
+        info!("p intr {}", a);
 
         let reg = mci0.reg().unwrap().next().unwrap();
+        let p_reg = parent.reg().unwrap().next().unwrap();
 
         info!(
             "mci0 reg: {:#x},mci0 reg size: {:#x}",
             reg.address,
             reg.size.unwrap()
+        );
+        info!(
+            "parent reg: {:#x}, reg size: {:#x}",
+            p_reg.address,
+            p_reg.size.unwrap()
         );
 
         let mci_reg_base = iomap((reg.address as usize).into(), reg.size.unwrap());

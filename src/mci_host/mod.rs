@@ -25,6 +25,8 @@ use mci_host_transfer::{MCIHostCmd, MCIHostTransfer};
 pub use mci_host_device::FSdifEvtHandler;
 use mci_sdif::sdif_device::SDIFDev;
 
+use crate::mci::fsdif_interrupt_handler;
+
 type MCIHostCardIntFn = fn();
 
 #[allow(unused)]
@@ -223,7 +225,7 @@ impl MCIHost {
 
     pub fn setup_irq(&mut self) -> Result<(), &'static str> {
         info!("setting irq");
-        let irq_num = 104;
+        let irq_num = 72;
         let dev_arc = Arc::clone(&self.dev);
         IrqParam {
             intc: 0.into(),
@@ -235,19 +237,20 @@ impl MCIHost {
         .register_builder({
             move |_irq| {
                 info!("mark");
-                dev_arc.fsdif_interrupt_handler()
+                // fsdif_interrupt_handler()
                 // info!("mark2");
-                // IrqHandleResult::Handled
+                IrqHandleResult::Handled
             }
         })
+        .priority(100)
         .register();
 
         info!("irq set up ok!");
         Ok(())
     }
-    pub fn fsdif_interrupt_handler(&self) {
-        self.dev.as_ref().fsdif_interrupt_handler();
-    }
+    // pub fn fsdif_interrupt_handler(&self) {
+    //     self.dev.as_ref().fsdif_interrupt_handler();
+    // }
 }
 
 #[allow(unused)]

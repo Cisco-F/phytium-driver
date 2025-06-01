@@ -21,7 +21,7 @@ impl MCIConfig {
         let mut config = Self {
             instance_id: MCIId::MCI0,
             reg: MCIReg::new(addr),
-            irq_num: 104,
+            irq_num: 72,
             trans_mode: MCITransMode::DMA,
             non_removable: false,
         };
@@ -30,7 +30,7 @@ impl MCIConfig {
             config.trans_mode = MCITransMode::PIO;
         }
 
-        config.clear_irq();
+        // config.clear_irq();
 
         config
     }
