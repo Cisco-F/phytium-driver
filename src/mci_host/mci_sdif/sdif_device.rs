@@ -483,7 +483,8 @@ impl MCIHostDevice for SDIFDev {
 
     #[cfg(feature="irq")]
     fn transfer_function(&self, content: &mut MCIHostTransfer, host: &MCIHost) -> MCIHostStatus {
-        use crate::osa::consts::{FSDIF_TRANS_ERR_EVENTS, SDMMC_OSA_EVENT_FLAG_AND, SDMMC_OSA_EVENT_FLAG_OR, SDMMC_OSA_EVENT_TRANSFER_DATA_SUCCESS};
+        use crate::{mci::regs::{MCIDMACIntEn, MCIDMACStatus, MCIRawInts}, osa::consts::{FSDIF_TRANS_ERR_EVENTS, SDMMC_OSA_EVENT_FLAG_AND, SDMMC_OSA_EVENT_FLAG_OR, SDMMC_OSA_EVENT_TRANSFER_DATA_SUCCESS}};
+        use crate::aarch::invalidate;
 
         self.pre_command(content, host)?;
         let mut cmd_data = self.covert_command_info(content);
@@ -499,6 +500,23 @@ impl MCIHostDevice for SDIFDev {
         }
 
         info!("cmd send!!!");
+        let raw_ints = self.hc.borrow().config().reg().read_reg::<MCIRawInts>();
+        let dmac_status = self.hc.borrow().config().reg().read_reg::<MCIDMACStatus>();
+        info!("raw ints 0x{:x}", raw_ints);
+
+        for _ in 0..5 {
+            sleep(Duration::from_millis(100));
+        }
+
+
+        if raw_ints.contains(MCIRawInts::CMD_BIT) {
+            self.hc.borrow().cmd_done();
+        }
+        if raw_ints.contains(MCIRawInts::DTO_BIT) {
+            self.hc.borrow().data_done(raw_ints.bits(), dmac_status.bits());
+        }
+
+
         let complete_events = if cmd_data.get_data().is_some() {
             SDMMC_OSA_EVENT_TRANSFER_CMD_SUCCESS | SDMMC_OSA_EVENT_TRANSFER_DATA_SUCCESS
         } else {
@@ -517,26 +535,26 @@ impl MCIHostDevice for SDIFDev {
         self.hc_evt.borrow_mut().osa_event_clear(events);
 
         // check if any error events
-        let err_events = FSDIF_TRANS_ERR_EVENTS;
-        events = 0;
-        let _ = self.hc_evt.borrow_mut().osa_event_wait(err_events, 0, &mut events, SDMMC_OSA_EVENT_FLAG_OR);
-        if events != 0 {
-            error!("finish command with error 0x{:x}", events);
-            self.hc.borrow_mut().register_dump();
-            self.hc_evt.borrow_mut().osa_event_clear(events);
-            return Err(MCIHostError::Timeout);
-        }
+        // let err_events = FSDIF_TRANS_ERR_EVENTS;
+        // events = 0;
+        // let _ = self.hc_evt.borrow_mut().osa_event_wait(err_events, 0, &mut events, SDMMC_OSA_EVENT_FLAG_OR);
+        // if events != 0 {
+        //     error!("finish command with error 0x{:x}", events);
+        //     self.hc.borrow_mut().register_dump();
+        //     self.hc_evt.borrow_mut().osa_event_clear(events);
+        //     return Err(MCIHostError::Timeout);
+        // }
 
         //TODO 这里的CLONE 会降低驱动速度,需要解决这个性能问题 可能Take出来直接用更好
-        // if let Some(_) = content.data() {
-        //     let data = cmd_data.get_data().unwrap();
-        //     unsafe { invalidate(data.buf().unwrap().as_ptr() as *const u8, data.buf().unwrap().len() * 4); }
-        //     if let Some(rx_data) = data.buf() {
-        //         if let Some(in_data) = content.data_mut() {
-        //             in_data.rx_data_set(Some(rx_data.clone()));
-        //         }
-        //     }
-        // }
+        if let Some(_) = content.data() {
+            let data = cmd_data.get_data().unwrap();
+            unsafe { invalidate(data.buf().unwrap().as_ptr() as *const u8, data.buf().unwrap().len() * 4); }
+            if let Some(rx_data) = data.buf() {
+                if let Some(in_data) = content.data_mut() {
+                    in_data.rx_data_set(Some(rx_data.clone()));
+                }
+            }
+        }
 
         // in PIO mode, read PIO data after recv DTO flag
         if let Err(_) = self.hc.borrow_mut().cmd_response_get(&mut cmd_data) {
@@ -551,7 +569,7 @@ impl MCIHostDevice for SDIFDev {
             }
         }
 
-        if  content.cmd().unwrap().response()[0] & content.cmd().unwrap().response_error_flags().bits() != 0 {
+        if content.cmd().unwrap().response()[0] & content.cmd().unwrap().response_error_flags().bits() != 0 {
             return Err(MCIHostError::Fail);
         }
 

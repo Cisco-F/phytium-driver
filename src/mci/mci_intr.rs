@@ -142,7 +142,7 @@ impl MCI {
         dev.event_set(SDMMC_OSA_EVENT_CARD_INSERTED);
     }
 
-    fn cmd_done(&self) {
+    pub fn cmd_done(&self) {
         let dev = match &self.evt_arg {
             Some(addr) => unsafe { NonNull::new_unchecked(addr.as_ptr() as *mut SDIFDev).as_ref() },
             None => panic!(),
@@ -150,7 +150,7 @@ impl MCI {
         dev.event_set(SDMMC_OSA_EVENT_TRANSFER_CMD_SUCCESS);
     }
 
-    fn data_done(&self, status: u32, dmac_status: u32) {
+    pub fn data_done(&self, status: u32, dmac_status: u32) {
         let dev = match &self.evt_arg {
             Some(addr) => unsafe { NonNull::new_unchecked(addr.as_ptr() as *mut SDIFDev).as_ref() },
             None => panic!(),
