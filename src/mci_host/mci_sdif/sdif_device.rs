@@ -111,7 +111,7 @@ impl MCIHostDevice for SDIFDev {
             }
         }
 
-        self.register_event_arg();
+        // self.register_event_arg();
         *self.hc_cfg.borrow_mut() = mci_config;
         Ok(())
     }
@@ -509,12 +509,12 @@ impl MCIHostDevice for SDIFDev {
         }
 
 
-        if raw_ints.contains(MCIRawInts::CMD_BIT) {
-            self.hc.borrow().cmd_done();
-        }
-        if raw_ints.contains(MCIRawInts::DTO_BIT) {
-            self.hc.borrow().data_done(raw_ints.bits(), dmac_status.bits());
-        }
+        // if raw_ints.contains(MCIRawInts::CMD_BIT) {
+        //     self.hc.borrow().cmd_done();
+        // }
+        // if raw_ints.contains(MCIRawInts::DTO_BIT) {
+        //     self.hc.borrow().data_done(raw_ints.bits(), dmac_status.bits());
+        // }
 
 
         let complete_events = if cmd_data.get_data().is_some() {
@@ -580,7 +580,7 @@ impl MCIHostDevice for SDIFDev {
     //     self.hc.borrow_mut().register_event_arg(arg);
     // }
 
-    fn fsdif_interrupt_handler(&self) -> IrqHandleResult {
-        self.hc.borrow_mut().fsdif_interrupt_handler()
-    }
+    // fn fsdif_interrupt_handler(&self) -> IrqHandleResult {
+    //     self.hc.borrow_mut().fsdif_interrupt_handler()
+    // }
 }

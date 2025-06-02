@@ -1,5 +1,6 @@
-use core::{alloc::Layout, mem::MaybeUninit, ptr::NonNull};
+use core::{alloc::Layout, mem::MaybeUninit, ptr::NonNull, sync::atomic::{AtomicU32, Ordering}};
 
+use alloc::sync::Arc;
 use consts::{MAX_POOL_SIZE, SDMMC_OSA_EVENT_FLAG_AND};
 use err::FMempError;
 use log::{error, info};
@@ -79,34 +80,23 @@ pub fn osa_dealloc(addr: NonNull<u8>, size: usize) {
 }
 
 pub struct OSAEvent {
-    event_flag: u32,
+    event_flag: AtomicU32,
     handle: Semaphore,
 }
 
 impl OSAEvent {
     pub fn default() -> Self {
         Self {
-            event_flag: 0,
+            event_flag: AtomicU32::new(0),
             handle: Semaphore::new(0),
         }
     }
-    pub fn osa_event_set(&mut self, event_type: u32){
-        self.event_flag |= event_type;
+    pub fn osa_event_set(&self, event_type: u32) {
+        self.event_flag.fetch_or(event_type, Ordering::SeqCst);
         self.handle.up();
     }
     pub fn osa_event_wait(&self, event_type: u32, _timeout_ms: u32, event: &mut u32, flags: u32) -> Result<(), &'static str> {
         info!("waiting event");
-
-        // *event = self.osa_event_get();
-        // if flags & SDMMC_OSA_EVENT_FLAG_AND != 0 {
-        //     if *event == event_type {
-        //         return Ok(());
-        //     }
-        // } else {
-        //     if *event & event_type != 0 {
-        //         return Ok(());
-        //     }
-        // }
 
         self.handle.down();
         *event = self.osa_event_get();
@@ -124,9 +114,31 @@ impl OSAEvent {
         Err("event wait failed")
     }
     pub fn osa_event_get(&self) -> u32 {
-        self.event_flag
+        self.event_flag.load(Ordering::SeqCst)
     }
-    pub fn osa_event_clear(&mut self, event_type: u32) {
-        self.event_flag &= !event_type;
+    pub fn osa_event_clear(&self, event_type: u32) {
+        self.event_flag.fetch_and(!event_type, Ordering::SeqCst);
     }
+}
+
+lazy_static! {
+    /// Global event handler
+    pub static ref OSA_EVENT: Arc<OSAEvent> = 
+        Arc::new(OSAEvent::default());
+}
+
+pub fn osa_event_set(event_type: u32) {
+    OSA_EVENT.osa_event_set(event_type);
+}
+
+pub fn osa_event_wait(event_type: u32, _timeout_ms: u32, event: &mut u32, flags: u32) -> Result<(), &'static str> {
+    OSA_EVENT.osa_event_wait(event_type, _timeout_ms, event, flags)
+}
+
+pub fn osa_event_get() -> u32 {
+    OSA_EVENT.osa_event_get()
+}
+
+pub fn osa_event_clear(event_type: u32) {
+    OSA_EVENT.osa_event_clear(event_type);
 }

@@ -11,16 +11,13 @@ use super::regs::*;
 impl MCI {
     pub(crate) fn private_cmd_send(&self,cmd:MCICmd, arg: u32) -> MCIResult{
         // self.interrupt_mask_set(MCIIntrType::GeneralIntr, MCIIntMask::INTS_DATA_MASK.bits(), false);
-        self.clear_interrupt_status();
+        // self.clear_interrupt_status();
         let reg = self.config.reg();
 
         warn!("raw ints: 0x{:x}", reg.read_reg::<MCIRawInts>());
 
         reg.retry_for(|reg: MCIStatus| {
             !reg.contains(MCIStatus::DATA_BUSY)
-        }, Some(RETRIES_TIMEOUT))?;
-        reg.retry_for(|reg: MCIStatus| {
-            !reg.contains(MCIStatus::DATA_STATE_MC_BUSY)
         }, Some(RETRIES_TIMEOUT))?;
         reg.write_reg(MCICmdArg::from_bits_truncate(arg));
 
@@ -32,8 +29,8 @@ impl MCI {
         let cmd_reg = MCICmd::START | cmd;
         info!("writing cmd reg");
         reg.write_reg(cmd_reg);
-        self.interrupt_mask_set(MCIIntrType::GeneralIntr, int_mask.bits(), true);
-        self.interrupt_mask_set(MCIIntrType::DmaIntr, MCIDMACIntEn::INTS_MASK.bits(), true);
+        // self.interrupt_mask_set(MCIIntrType::GeneralIntr, int_mask.bits(), true);
+        // self.interrupt_mask_set(MCIIntrType::DmaIntr, MCIDMACIntEn::INTS_MASK.bits(), true);
         info!("after write reg");
 
         reg.retry_for(|reg:MCICmd|{

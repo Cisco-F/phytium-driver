@@ -39,6 +39,8 @@ use status::SdStatus;
 use csd::{CsdFlags, SdCardCmdClass, SdCsd};
 use usr_param::SdUsrParam;
 
+pub static mut REG_BASE: NonNull<u8> = unsafe { NonNull::new_unchecked("uninit".as_ptr() as *mut u8) };
+
 pub struct SdCard{
     base: MCICardBase,
     usr_param: SdUsrParam,
@@ -58,6 +60,7 @@ pub struct SdCard{
 impl SdCard {
     pub fn new(addr: NonNull<u8>,iopad:IoPad) -> Self {
         osa_init();
+        unsafe { REG_BASE = addr; }
 
         let mci_host_config = MCIHostConfig::new();
 
@@ -475,12 +478,12 @@ impl SdCard{
             let _ = host.dev.card_detect_init(cd);
         }
 
-        // if host.config.enable_irq {
-        //     if let Err(e) = self.base.host.as_mut().unwrap().setup_irq() {
-        //         error!("set up irq failed! err: {:?}", e);
-        //         panic!();
-        //     }
-        // }
+        if host.config.enable_irq {
+            if let Err(e) = self.base.host.as_mut().unwrap().setup_irq() {
+                error!("set up irq failed! err: {:?}", e);
+                panic!();
+            }
+        }
 
         /* set the host status flag, after the card re-plug in, don't need init host again */
         self.base.is_host_ready = true;

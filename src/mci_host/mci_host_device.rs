@@ -55,7 +55,7 @@ pub trait MCIHostDevice {
     fn transfer_function(&self, content: &mut MCIHostTransfer, host:&MCIHost) -> MCIHostStatus;
 
     // fn register_event_arg(&self, arg: NonNull<u8>);
-    fn fsdif_interrupt_handler(&self) -> IrqHandleResult;
+    // fn fsdif_interrupt_handler(&self) -> IrqHandleResult;
 
     /* boot related functions */
     // todo 永远不会用到它们
