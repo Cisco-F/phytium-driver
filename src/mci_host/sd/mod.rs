@@ -478,12 +478,12 @@ impl SdCard{
             let _ = host.dev.card_detect_init(cd);
         }
 
-        if host.config.enable_irq {
-            if let Err(e) = self.base.host.as_mut().unwrap().setup_irq() {
-                error!("set up irq failed! err: {:?}", e);
-                panic!();
-            }
-        }
+        // if host.config.enable_irq {
+        //     if let Err(e) = self.base.host.as_mut().unwrap().setup_irq() {
+        //         error!("set up irq failed! err: {:?}", e);
+        //         panic!();
+        //     }
+        // }
 
         /* set the host status flag, after the card re-plug in, don't need init host again */
         self.base.is_host_ready = true;

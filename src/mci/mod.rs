@@ -25,6 +25,7 @@ pub use mci_cmddata::*;
 pub use mci_config::*;
 pub use mci_timing::*;
 pub use mci_intr::fsdif_interrupt_handler;
+pub use mci_intr::register_dump;
 
 use crate::{aarch::dsb, osa::pool_buffer::PoolBuffer, regs::*, sleep, IoPad};
 use core::{ptr::NonNull, time::Duration};
