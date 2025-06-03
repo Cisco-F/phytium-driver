@@ -225,7 +225,7 @@ impl MCIHost {
 
     pub fn setup_irq(&mut self) -> Result<(), &'static str> {
         info!("setting irq");
-        let irq_num = 104;
+        let irq_num = 72;
         let dev_arc = Arc::clone(&self.dev);
         IrqParam {
             intc: 0.into(),
@@ -237,9 +237,9 @@ impl MCIHost {
         .register_builder({
             move |_irq| {
                 info!("mark");
-                fsdif_interrupt_handler()
+                // fsdif_interrupt_handler()
                 // info!("mark2");
-                // IrqHandleResult::Handled
+                IrqHandleResult::Handled
             }
         })
         .priority(100)
