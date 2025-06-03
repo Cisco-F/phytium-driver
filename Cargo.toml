@@ -13,7 +13,7 @@ bytemuck = "1.22.0"
 lazy_static = { version = "1.5.0", features = ["spin_no_std"] }
 spin = "0.10.0"
 rlsf = "0.2.1"
-bare-test = "0.4.1"
+# bare-test = "0.4.1"
 
 [dev-dependencies]
 bare-test = "0.4.1"
@@ -25,7 +25,7 @@ spin_on = "0.1.1"
 bare-test-macros = "0.2"
 
 [features]
-default = ["dma", "irq"]
+default = ["pio", "irq"]
 dma = []
 pio = []
 poll = []

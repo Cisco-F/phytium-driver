@@ -4,7 +4,6 @@ use core::ptr::NonNull;
 use core::time::Duration;
 
 use alloc::vec::Vec;
-use bare_test::irq::IrqHandleResult;
 use dma_api::DSlice;
 use log::*;
 

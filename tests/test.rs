@@ -10,12 +10,10 @@ mod tests {
 
     use alloc::vec::Vec;
     use bare_test::{
-        globals::{global_val, PlatformInfoKind},
-        mem::mmu::iomap,
-        time::spin_delay, GetIrqConfig,
+        globals::{global_val, PlatformInfoKind}, irq::{IrqHandleResult, IrqParam}, mem::mmu::iomap, time::spin_delay, GetIrqConfig
     };
-    use log::*;
-    use phytium_mci::{iopad::PAD_ADDRESS, sd::SdCard, *};
+    use log::{info, *};
+    use phytium_mci::{iopad::PAD_ADDRESS, mci::{fsdif_interrupt_handler, regs::{MCIRawInts, MCIReg}}, sd::{SdCard, REG_BASE}, *};
 
     const SD_START_BLOCK: u32 = 131072;
     const SD_USE_BLOCK: u32 = 10;
@@ -38,7 +36,7 @@ mod tests {
 
         let info= mci0.irq_info().unwrap();
         info!("irq parent {:?}", info.irq_parent);
-        
+
         let parent = mci0.interrupt_parent().unwrap().node;
         let p_name = parent.name;
         let a = parent.interrupts().unwrap().next().unwrap().next().unwrap();
@@ -62,6 +60,30 @@ mod tests {
         let mci_reg_base = iomap((reg.address as usize).into(), reg.size.unwrap());
 
         let iopad_reg_base = iomap((PAD_ADDRESS as usize).into(), 0x2000);
+
+        unsafe { REG_BASE = mci_reg_base; }
+
+        let reg = MCIReg::new(mci_reg_base);
+        let raw_ints = reg.read_reg::<MCIRawInts>();
+        reg.write_reg(raw_ints);
+        drop(reg);
+
+        let cfg = info.cfgs[0].clone();
+        info!("irq id {:?}", cfg.irq);
+        info!("trigger is {:?}", cfg.trigger);
+
+        IrqParam {
+            intc: info.irq_parent,
+            cfg: info.cfgs[0].clone()
+        }
+        .register_builder(|_irq_num| {
+            // fsdif_interrupt_handler();
+            info!("capture irq: {:?}", _irq_num);
+            let reg = MCIReg::new(mci_reg_base);
+            register_dump(&reg);
+            IrqHandleResult::Handled
+        })
+        .register();
 
         let iopad = IoPad::new(iopad_reg_base);
     

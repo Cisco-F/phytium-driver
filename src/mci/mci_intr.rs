@@ -1,6 +1,5 @@
 use core::ptr::NonNull;
 
-use bare_test::irq::IrqHandleResult;
 use log::debug;
 use log::error;
 use log::warn;
@@ -49,7 +48,7 @@ impl MCI {
 }
 
 /// Interrupt handler for SDIF instance
-pub fn fsdif_interrupt_handler() -> IrqHandleResult {
+pub fn fsdif_interrupt_handler() {
     warn!("captured irq!");
     let reg = unsafe { MCIReg::new(REG_BASE) };
 
@@ -65,7 +64,7 @@ pub fn fsdif_interrupt_handler() -> IrqHandleResult {
         warn!("irq exit with no action");
         reg.write_reg::<MCIRawInts>(events);
         reg.write_reg::<MCIDMACStatus>(dmac_events);
-        return IrqHandleResult::Handled;
+        return;
     }
 
     reg.write_reg::<IrqTempRegister>(IrqTempRegister::from_bits_truncate(0));
@@ -74,7 +73,7 @@ pub fn fsdif_interrupt_handler() -> IrqHandleResult {
     if (events.bits() == 0) && (dmac_events.bits() & 0x1FFF == 0) {
         reg.write_reg::<MCIRawInts>(events);
         reg.write_reg::<MCIDMACStatus>(dmac_events);
-        return IrqHandleResult::Handled;
+        return;
     }
 
     debug!("events:0x{:x},mask:0x{:x},dmac_events:{:x},dmac_mask:0x{:x}", events, event_mask, dmac_events, dmac_evt_mask);
@@ -138,8 +137,6 @@ pub fn fsdif_interrupt_handler() -> IrqHandleResult {
         warn!("data over!");
         data_done(events.bits(), dmac_events.bits());
     }
-
-    IrqHandleResult::Handled
 }
 
 fn card_detected() {
@@ -225,7 +222,7 @@ fn sdio_interrupt() {
 
 }
 
-fn register_dump(reg: &MCIReg) {
+pub fn register_dump(reg: &MCIReg) {
     warn!("cntrl: 0x{:x}", reg.read_reg::<MCICtrl>());
     warn!("pwren: 0x{:x}", reg.read_reg::<MCIPwrEn>());
     warn!("clkdiv: 0x{:x}", reg.read_reg::<MCIClkDiv>());

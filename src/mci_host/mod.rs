@@ -14,7 +14,6 @@ use core::{cell::Cell, ptr::NonNull};
 
 use alloc::{boxed::Box, rc::Rc, sync::Arc};
 
-use bare_test::{driver::intc::{IrqConfig, Trigger}, irq::{IrqHandleResult, IrqParam}};
 use constants::*;
 use err::{MCIHostError, MCIHostStatus};
 use log::info;
@@ -223,31 +222,32 @@ impl MCIHost {
         self.dev.init(addr,self)
     }
 
-    pub fn setup_irq(&mut self) -> Result<(), &'static str> {
-        info!("setting irq");
-        let irq_num = 72;
-        let dev_arc = Arc::clone(&self.dev);
-        IrqParam {
-            intc: 0.into(),
-            cfg: IrqConfig {
-                irq: (irq_num as usize).into(),
-                trigger: Trigger::LevelHigh,
-            }
-        }
-        .register_builder({
-            move |_irq| {
-                info!("mark");
-                // fsdif_interrupt_handler()
-                // info!("mark2");
-                IrqHandleResult::Handled
-            }
-        })
-        .priority(100)
-        .register();
+    // pub fn setup_irq(&mut self) -> Result<(), &'static str> {
+    //     info!("setting irq");
+    //     let irq_num = 72;
+    //     let dev_arc = Arc::clone(&self.dev);
+    //     IrqParam {
+    //         intc: 0.into(),
+    //         cfg: IrqConfig {
+    //             irq: (irq_num as usize).into(),
+    //             trigger: Trigger::LevelHigh,
+    //         }
+    //     }
+    //     .register_builder({
+    //         move |_irq| {
+    //             info!("mark");
+    //             // fsdif_interrupt_handler()
+    //             // info!("mark2");
+    //             IrqHandleResult::Handled
+    //         }
+    //     })
+    //     .priority(100)
+    //     .register();
 
-        info!("irq set up ok!");
-        Ok(())
-    }
+    //     info!("irq set up ok!");
+    //     Ok(())
+    // }
+    
     // pub fn fsdif_interrupt_handler(&self) {
     //     self.dev.as_ref().fsdif_interrupt_handler();
     // }

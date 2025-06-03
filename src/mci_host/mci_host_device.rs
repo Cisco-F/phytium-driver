@@ -2,7 +2,6 @@ use core::ptr::NonNull;
 
 use alloc::boxed::Box;
 use alloc::vec::Vec;
-use bare_test::irq::IrqHandleResult;
 
 use crate::mci::MCICmdData;
 
