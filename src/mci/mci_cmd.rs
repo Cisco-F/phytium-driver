@@ -15,6 +15,7 @@ impl MCI {
         let reg = self.config.reg();
 
         warn!("raw ints: 0x{:x}", reg.read_reg::<MCIRawInts>());
+        warn!("int mask: 0x{:b}", reg.read_reg::<MCIIntMask>());
 
         reg.retry_for(|reg: MCIStatus| {
             !reg.contains(MCIStatus::DATA_BUSY)
