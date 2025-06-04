@@ -8,7 +8,7 @@ use dma_api::DSlice;
 use log::*;
 
 use crate::aarch::dsb;
-use crate::mci::regs::MCIIntMask;
+use crate::mci::regs::{MCIBusMode, MCICmd, MCICmdArg, MCICtrl, MCIDMACStatus, MCIIntMask, MCIRawInts, MCIStatus};
 use crate::mci::mci_data::MCIData;
 use crate::mci::{MCICmdData, MCIConfig, MCI};
 use crate::mci_host::mci_host_card_detect::MCIHostCardDetect;
@@ -88,6 +88,7 @@ impl MCIHostDevice for SDIFDev {
     }
 
     fn do_init(&self,addr: NonNull<u8>,host:&MCIHost) -> MCIHostStatus {
+        info!("dev do init");
         let mci_config = MCIConfig::lookup_config(addr);
         let iopad = self.hc.borrow_mut().iopad_take().ok_or(MCIHostError::NoData)?;
 
@@ -112,6 +113,7 @@ impl MCIHostDevice for SDIFDev {
 
         // self.register_event_arg();
         *self.hc_cfg.borrow_mut() = mci_config;
+        info!("do_init ok");
         Ok(())
     }
 
@@ -582,4 +584,89 @@ impl MCIHostDevice for SDIFDev {
     // fn fsdif_interrupt_handler(&self) -> IrqHandleResult {
     //     self.hc.borrow_mut().fsdif_interrupt_handler()
     // }
+
+    fn send_cmd0(&self, content: &mut MCIHostTransfer, host: &MCIHost) -> MCIHostStatus {
+        let mut cmd_data = self.covert_command_info(content);
+
+        cmd_data.success_set(false);
+        self.hc.borrow_mut().cur_cmd_set(&cmd_data);
+
+        self.hc.borrow_mut().ctrl_reset(MCICtrl::FIFO_RESET | MCICtrl::DMA_RESET).unwrap();
+        let mci = self.hc.borrow();
+        let reg = mci.config().reg();
+
+        // 开启dma
+        // reg.modify_reg(|reg| { MCICtrl::USE_INTERNAL_DMAC | reg });
+        // reg.modify_reg(|reg| { MCIBusMode::DE | reg });
+
+        if cmd_data.get_data().is_none() {
+            warn!("sending cmd0, no data need to transfer");
+        }
+
+        // 传输命令
+        let mut raw_cmd = MCICmd::empty();
+
+        let flag = cmd_data.flag();
+        warn!("flag is {:b}", flag.bits());
+        warn!("cmd arg is {:x}", cmd_data.cmdarg());
+        if flag.contains(MCICmdFlag::ABORT) {
+            warn!("abort");
+            raw_cmd |= MCICmd::STOP_ABORT;
+        }
+
+        if flag.contains(MCICmdFlag::NEED_INIT) {
+            warn!("need init");
+            raw_cmd |= MCICmd::INIT;
+        }
+
+        if flag.contains(MCICmdFlag::EXP_RESP) {
+            raw_cmd |= MCICmd::RESP_EXP;
+            warn!("need resp");
+            if flag.contains(MCICmdFlag::EXP_LONG_RESP) {
+                raw_cmd |= MCICmd::RESP_LONG;
+                warn!("need long resp");
+            }
+        }
+
+        raw_cmd |= MCICmd::from_bits_truncate(set_reg32_bits!(cmd_data.cmdidx(), 5, 0));
+
+        info!("=======cmd0 begin========");
+        // mci.interrupt_mask_set(MCIIntrType::GeneralIntr, MCIIntMask::CMD_BIT.bits(), true);
+        reg.write_reg(MCIIntMask::CMD_BIT);
+        info!("writing reg");
+
+        warn!("raw ints: 0x{:x}", reg.read_reg::<MCIRawInts>());
+        warn!("int mask: 0x{:x}", reg.read_reg::<MCIIntMask>());
+        warn!("cmd arg: 0x{:x}", cmd_data.cmdarg());
+
+        // let int_mask = reg.read_reg::<MCIIntMask>();
+        // mci.interrupt_mask_set(MCIIntrType::GeneralIntr, int_mask.bits(), false);
+
+        reg.retry_for(|reg: MCIStatus| {
+            !reg.contains(MCIStatus::DATA_BUSY)
+        }, Some(RETRIES_TIMEOUT)).unwrap();
+        debug!("card free");
+
+        debug!("raw cmd: 0x{:x}", raw_cmd.bits());
+
+        reg.write_reg(MCICmdArg::from_bits_truncate(cmd_data.cmdarg()));
+        unsafe { dsb(); }
+        warn!("after write arg reg raw ints: 0x{:x}", reg.read_reg::<MCIRawInts>());
+
+        reg.write_reg(raw_cmd);
+        warn!("write raw cmd without start bit ok");
+        let cmd_reg = MCICmd::START | raw_cmd;
+        reg.write_reg(cmd_reg);
+        // mci.interrupt_mask_set(MCIIntrType::GeneralIntr, int_mask.bits(), true);
+        warn!("write reg ok!!!!");
+
+        sleep(Duration::from_millis(100));
+
+        info!("cmd0 send!!!");
+        let raw_ints = self.hc.borrow().config().reg().read_reg::<MCIRawInts>();
+        let dmac_status = self.hc.borrow().config().reg().read_reg::<MCIDMACStatus>();
+        info!("raw ints 0x{:x}", raw_ints);
+
+        Ok(())
+    }
 }

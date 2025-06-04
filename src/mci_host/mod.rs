@@ -169,6 +169,7 @@ impl MCIHost {
         content.set_cmd(Some(command));
         
         let err = self.dev.transfer_function(&mut content,self);
+        // let err = self.dev.send_cmd0(&mut content, self);
         
         if err.is_err() {
             return Err(MCIHostError::TransferFailed);

@@ -106,6 +106,7 @@ impl SdCard {
             }
         }
 
+        debug!("sd card initializing");
         if let Err(err) = sd_card.init(addr) {
             error!("Sd Card Init Fail, error = {:?}",err);
             panic!("Sd Card Init Fail");
@@ -253,7 +254,7 @@ impl SdCard{
     }
 
     fn card_init_proc(&mut self) -> MCIHostStatus {
-
+        info!("card init proc");
         /* reset variables */
         self.flags = SdCardFlag::empty();
         /* set DATA bus width */
@@ -464,6 +465,7 @@ impl SdCard{
     }
     
     fn host_init(&mut self,addr:NonNull<u8>) -> MCIHostStatus {
+        info!("host init");
         let host = self.base.host.as_ref().ok_or(MCIHostError::HostNotReady)?;
         if !self.base.is_host_ready {
             if let Err(err) = host.dev.init(addr,host) {
@@ -478,16 +480,10 @@ impl SdCard{
             let _ = host.dev.card_detect_init(cd);
         }
 
-        // if host.config.enable_irq {
-        //     if let Err(e) = self.base.host.as_mut().unwrap().setup_irq() {
-        //         error!("set up irq failed! err: {:?}", e);
-        //         panic!();
-        //     }
-        // }
-
         /* set the host status flag, after the card re-plug in, don't need init host again */
         self.base.is_host_ready = true;
 
+        info!("host init ok");
         Ok(())
     }
 

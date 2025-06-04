@@ -227,6 +227,7 @@ impl MCI {
                 if cur_cmd_index == Self::SWITCH_VOLTAGE as u32 {
                     self.private_cmd11_send(reg_val | cmd_reg)
                 } else {
+                    info!("updating clock, reg val 0x{:x}", reg_val.bits());
                     self.private_cmd_send(reg_val, 0)
                 }{
                 error!("update ext clock failed !!!");
@@ -244,9 +245,11 @@ impl MCI {
             self.clock_set(true);
 
             /* update clock for clock divider */
+            
             if cur_cmd_index == Self::SWITCH_VOLTAGE as u32 {
                 self.private_cmd11_send(reg_val | cmd_reg)?;
             } else {
+                info!("updating clock for clock divider, regval 0x{:x}", reg_val.bits());
                 self.private_cmd_send(reg_val, 0)?;
             }
 
@@ -575,6 +578,7 @@ impl MCI {
 /// MCI private API 
 impl MCI {
     fn reset(&self) -> MCIResult {
+        info!("mci reset");
         /* set fifo */
         self.fifoth_set(
             MCIFifoThDMATransSize::DMATrans8, 
@@ -617,6 +621,7 @@ impl MCI {
         }
 
         /* send private command to update clock */
+        info!("send private command to update clock, cmd is 0x{:x}", MCICmd::UPD_CLK.bits());
         self.private_cmd_send(MCICmd::UPD_CLK, 0)?;
 
         /* reset card for no-removeable media, e.g. eMMC */

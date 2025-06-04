@@ -13,7 +13,7 @@ mod tests {
         globals::{global_val, PlatformInfoKind}, irq::{IrqHandleResult, IrqParam}, mem::mmu::iomap, time::spin_delay, GetIrqConfig
     };
     use log::{info, *};
-    use phytium_mci::{iopad::PAD_ADDRESS, mci::{fsdif_interrupt_handler, regs::{MCIRawInts, MCIReg}}, sd::{SdCard, REG_BASE}, *};
+    use phytium_mci::{iopad::PAD_ADDRESS, mci::{fsdif_interrupt_handler, regs::{MCICtrl, MCIDMACStatus, MCIIntMask, MCIRawInts, MCIReg}}, sd::{SdCard, REG_BASE}, *};
 
     const SD_START_BLOCK: u32 = 131072;
     const SD_USE_BLOCK: u32 = 10;
@@ -65,26 +65,36 @@ mod tests {
 
         let reg = MCIReg::new(mci_reg_base);
         let raw_ints = reg.read_reg::<MCIRawInts>();
+        let dmac_statuc = reg.read_reg::<MCIDMACStatus>();
+        info!("raw ints {:x}", raw_ints);
+        info!("int mask {:x}", reg.read_reg::<MCIIntMask>());
+        info!("ctrl {:x}", reg.read_reg::<MCICtrl>());
+        info!("dmac status {:x}", dmac_statuc);
         reg.write_reg(raw_ints);
+        reg.write_reg(dmac_statuc);
+        // reg.set_reg(MCICtrl::INT_ENABLE);
         drop(reg);
 
         let cfg = info.cfgs[0].clone();
         info!("irq id {:?}", cfg.irq);
         info!("trigger is {:?}", cfg.trigger);
 
-        IrqParam {
+        let param = IrqParam {
             intc: info.irq_parent,
-            cfg: info.cfgs[0].clone()
-        }
-        .register_builder(|_irq_num| {
-            // fsdif_interrupt_handler();
+            cfg: info.cfgs[0].clone(),
+        };
+        
+        param.register_builder(|_irq_num| {
             info!("capture irq: {:?}", _irq_num);
-            let reg = MCIReg::new(mci_reg_base);
-            register_dump(&reg);
+            // fsdif_interrupt_handler();
+            // let reg = unsafe { MCIReg::new(REG_BASE) };
+            // info!("raw_ints in irq: {:x}", reg.read_reg::<MCIRawInts>());
+            // info!("dmac {:x}", reg.read_reg::<MCIDMACStatus>());
+            // register_dump(&reg);
             IrqHandleResult::Handled
         })
         .register();
-
+    
         let iopad = IoPad::new(iopad_reg_base);
     
         let mut sdcard = SdCard::new(mci_reg_base,iopad);

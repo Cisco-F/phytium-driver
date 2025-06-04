@@ -15,7 +15,9 @@ impl MCI {
         let reg = self.config.reg();
 
         warn!("raw ints: 0x{:x}", reg.read_reg::<MCIRawInts>());
-        warn!("int mask: 0x{:b}", reg.read_reg::<MCIIntMask>());
+        warn!("int mask: 0x{:x}", reg.read_reg::<MCIIntMask>());
+        warn!("cmd: 0x{:x}", cmd.bits());
+        warn!("cmd arg: 0x{:x}", arg);
 
         reg.retry_for(|reg: MCIStatus| {
             !reg.contains(MCIStatus::DATA_BUSY)
@@ -32,12 +34,12 @@ impl MCI {
         reg.write_reg(cmd_reg);
         // self.interrupt_mask_set(MCIIntrType::GeneralIntr, int_mask.bits(), true);
         // self.interrupt_mask_set(MCIIntrType::DmaIntr, MCIDMACIntEn::INTS_MASK.bits(), true);
-        info!("after write reg");
+        // info!("after write reg");
 
         reg.retry_for(|reg:MCICmd|{
             !reg.contains(MCICmd::START)
         }, Some(RETRIES_TIMEOUT))?;
-        warn!("after write cmd reg raw ints: 0x{:x}", reg.read_reg::<MCIRawInts>());
+        warn!("after write cmd reg, raw_ints: 0x{:x}", reg.read_reg::<MCIRawInts>());
 
         info!("private cmd ok");
         Ok(())

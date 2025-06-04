@@ -53,6 +53,8 @@ pub trait MCIHostDevice {
     fn covert_command_info(&self, in_trans: &mut MCIHostTransfer) -> MCICmdData;
     fn transfer_function(&self, content: &mut MCIHostTransfer, host:&MCIHost) -> MCIHostStatus;
 
+    fn send_cmd0(&self, content: &mut MCIHostTransfer, host: &MCIHost) -> MCIHostStatus;
+
     // fn register_event_arg(&self, arg: NonNull<u8>);
     // fn fsdif_interrupt_handler(&self) -> IrqHandleResult;
 
