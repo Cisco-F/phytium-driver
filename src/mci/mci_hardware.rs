@@ -99,6 +99,8 @@ impl MCI {
         }
 
         /* update clock after reset */
+        //todo 应该是重复了
+        debug!("update clock after reset, cmd: 0x{:x}", MCICmd::UPD_CLK.bits());
         self.private_cmd_send(MCICmd::UPD_CLK, 0)?;
         if let Err(e) = self.private_cmd_send(MCICmd::UPD_CLK, 0) {
             error!("Update clock failed!");

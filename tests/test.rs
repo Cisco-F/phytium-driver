@@ -65,6 +65,7 @@ mod tests {
 
         let reg = MCIReg::new(mci_reg_base);
         let raw_ints = reg.read_reg::<MCIRawInts>();
+        info!("raw ints {:x}", raw_ints);
         reg.write_reg(raw_ints);
         drop(reg);
 
@@ -72,19 +73,21 @@ mod tests {
         info!("irq id {:?}", cfg.irq);
         info!("trigger is {:?}", cfg.trigger);
 
-        IrqParam {
+        let param = IrqParam {
             intc: info.irq_parent,
-            cfg: info.cfgs[0].clone()
-        }
-        .register_builder(|_irq_num| {
-            // fsdif_interrupt_handler();
+            cfg: info.cfgs[0].clone(),
+        };
+        
+        param.register_builder(|_irq_num| {
             info!("capture irq: {:?}", _irq_num);
-            let reg = MCIReg::new(mci_reg_base);
-            register_dump(&reg);
+            fsdif_interrupt_handler();
+            // let reg = unsafe { MCIReg::new(REG_BASE) };
+            // info!("raw_ints in irq: {:x}", reg.read_reg::<MCIRawInts>());
+            // register_dump(&reg);
             IrqHandleResult::Handled
         })
         .register();
-
+    
         let iopad = IoPad::new(iopad_reg_base);
     
         let mut sdcard = SdCard::new(mci_reg_base,iopad);
