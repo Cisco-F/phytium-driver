@@ -21,7 +21,7 @@ use crate::mci_host::mci_host_config::MCIHostType;
 use crate::mci_host::mci_sdif::sdif_device::SDIFDev;
 use crate::mci_host::MCIHost;
 use crate::osa::{osa_alloc_aligned, osa_init};
-use crate::{sleep, IoPad, MCIHostDevice};
+use crate::{sleep, IoPad};
 use crate::tools::swap_word_byte_sequence_u32;
 
 use super::err::{MCIHostError, MCIHostStatus};
@@ -82,15 +82,8 @@ impl SdCard {
         let desc_num = mci_host_config.max_trans_size / mci_host_config.def_block_size;
         let sdif_device = SDIFDev::new(addr, desc_num);
         sdif_device.iopad_set(iopad);
-        let host = MCIHost::new(Box::new(sdif_device) as Box<dyn MCIHostDevice>, mci_host_config);
+        let host = MCIHost::new(Box::new(sdif_device), mci_host_config);
         let host_type = host.config.host_type;
-
-        // if mci_host_config.enable_irq {
-        //     if let Err(e) = host.setup_irq() {
-        //         error!("set up irq failed! err: {:?}", e);
-        //         panic!();
-        //     }
-        // }
 
         // 初步组装 SdCard
         let mut sd_card = SdCard::from_base(base);
@@ -106,12 +99,6 @@ impl SdCard {
             }
         }
 
-        debug!("sd card initializing");
-        if let Err(err) = sd_card.init(addr) {
-            error!("Sd Card Init Fail, error = {:?}",err);
-            panic!("Sd Card Init Fail");
-        }
-        
         sd_card
     }
 
@@ -212,6 +199,8 @@ impl SdCard {
 /// SD卡其他操作命令
 impl SdCard{
     pub fn init(&mut self,addr:NonNull<u8>) -> MCIHostStatus {
+        debug!("sd card initializing");
+        
         let status = if !self.base.is_host_ready {
             self.host_init(addr)
         } else {

@@ -10,7 +10,7 @@ mod tests {
 
     use alloc::vec::Vec;
     use bare_test::{
-        globals::{global_val, PlatformInfoKind}, irq::{IrqHandleResult, IrqParam}, mem::mmu::iomap, time::spin_delay, GetIrqConfig
+        driver::{Descriptor, Device}, globals::{global_val, PlatformInfoKind}, irq::{IrqHandleResult, IrqParam}, mem::mmu::iomap, time::spin_delay, GetIrqConfig
     };
     use log::{info, *};
     use phytium_mci::{iopad::PAD_ADDRESS, mci::{fsdif_interrupt_handler, regs::{MCICtrl, MCIDMACStatus, MCIIntMask, MCIRawInts, MCIReg}}, sd::{SdCard, REG_BASE}, *};
@@ -79,26 +79,31 @@ mod tests {
         info!("irq id {:?}", cfg.irq);
         info!("trigger is {:?}", cfg.trigger);
 
-        let param = IrqParam {
-            intc: info.irq_parent,
-            cfg: info.cfgs[0].clone(),
-        };
+        // let param = IrqParam {
+        //     intc: info.irq_parent,
+        //     cfg: info.cfgs[0].clone(),
+        // };
         
-        param.register_builder(|_irq_num| {
-            info!("capture irq: {:?}", _irq_num);
-            // fsdif_interrupt_handler();
-            // let reg = unsafe { MCIReg::new(REG_BASE) };
-            // info!("raw_ints in irq: {:x}", reg.read_reg::<MCIRawInts>());
-            // info!("dmac {:x}", reg.read_reg::<MCIDMACStatus>());
-            // register_dump(&reg);
-            IrqHandleResult::Handled
-        })
-        .register();
-    
-        let iopad = IoPad::new(iopad_reg_base);
-    
-        let mut sdcard = SdCard::new(mci_reg_base,iopad);
+        // param.register_builder(|_irq_num| {
+        //     info!("capture irq: ");
+        //     // fsdif_interrupt_handler();
+        //     // let reg = unsafe { MCIReg::new(REG_BASE) };
+        //     // info!("raw_ints in irq: {:x}", reg.read_reg::<MCIRawInts>());
+        //     // info!("dmac {:x}", reg.read_reg::<MCIDMACStatus>());
+        //     // register_dump(&reg);
+        //     IrqHandleResult::Handled
+        // })
+        // .register();
 
+        let iopad = IoPad::new(iopad_reg_base);
+        
+        let sdcard = SdCard::new(mci_reg_base,iopad);
+        let device = Device::new(Descriptor::default(), sdcard);
+        if let Err(err) = device.spin_try_borrow_by(0.into()).init(mci_reg_base) {
+            error!("Sd Card Init Fail, error = {:?}",err);
+            panic!("Sd Card Init Fail");
+        }
+        
         ////////////////////// SD card init finished //////////////////////
 
         // 初始化write buffer
@@ -108,11 +113,11 @@ mod tests {
             buffer[i] = i as u32;
         }
 
-        sdcard.write_blocks(&mut buffer, SD_START_BLOCK, SD_USE_BLOCK).unwrap();
+        device.spin_try_borrow_by(0.into()).write_blocks(&mut buffer, SD_START_BLOCK, SD_USE_BLOCK).unwrap();
 
         let mut receive_buf = Vec::new();
 
-        sdcard.read_blocks(&mut receive_buf, SD_START_BLOCK, SD_USE_BLOCK).unwrap();
+        device.spin_try_borrow_by(0.into()).read_blocks(&mut receive_buf, SD_START_BLOCK, SD_USE_BLOCK).unwrap();
 
         for i in 0..receive_buf.len() {
             assert_eq!(receive_buf[i], buffer[i]);

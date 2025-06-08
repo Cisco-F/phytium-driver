@@ -8,20 +8,18 @@ use dma_api::DSlice;
 use log::*;
 
 use crate::aarch::dsb;
-use crate::mci::regs::{MCIBusMode, MCICmd, MCICmdArg, MCICtrl, MCIDMACStatus, MCIIntMask, MCIRawInts, MCIStatus};
+use crate::mci::regs::{MCICmd, MCICmdArg, MCICtrl, MCIDMACStatus, MCIIntMask, MCIRawInts, MCIStatus};
 use crate::mci::mci_data::MCIData;
 use crate::mci::{MCICmdData, MCIConfig, MCI};
 use crate::mci_host::mci_host_card_detect::MCIHostCardDetect;
 use crate::mci_host::mci_host_config::*;
 use crate::mci_host::mci_host_transfer::MCIHostTransfer;
 use crate::mci_host::MCIHostCardIntFn;
-use crate::osa::consts::SDMMC_OSA_EVENT_TRANSFER_CMD_SUCCESS;
 use crate::osa::{osa_alloc_aligned, OSAEvent};
 use crate::osa::pool_buffer::PoolBuffer;
 use crate::sd::consts::SD_BLOCK_SIZE;
 use crate::{sleep, IoPad};
 use crate::tools::swap_half_word_byte_sequence_u32;
-use crate::mci_host::mci_host_device::MCIHostDevice;
 use super::consts::SDStatus;
 use super::MCIHost;
 use crate::mci_host::err::*;
@@ -79,8 +77,8 @@ impl SDIFDev {
     }
 }
 
-impl MCIHostDevice for SDIFDev {
-    fn init(&self, addr: NonNull<u8>,host:&MCIHost) -> MCIHostStatus {
+impl SDIFDev {
+    pub fn init(&self, addr: NonNull<u8>,host:&MCIHost) -> MCIHostStatus {
         let num_of_desc = host.config.max_trans_size/host.config.def_block_size;
         self.desc_num.set(num_of_desc as u32);
         self.do_init(addr,host)?;
@@ -143,14 +141,14 @@ impl MCIHostDevice for SDIFDev {
     //     Ok(())
     // }
     
-    fn reset(&self) -> MCIHostStatus {
+    pub fn reset(&self) -> MCIHostStatus {
         match self.hc.borrow_mut().restart() {
             Ok(_) => Ok(()),
             Err(_) => Err(MCIHostError::Fail),
         }
     }
 
-    fn switch_to_voltage(&self, voltage: MCIHostOperationVoltage,host:&MCIHost) -> MCIHostStatus {
+    pub fn switch_to_voltage(&self, voltage: MCIHostOperationVoltage,host:&MCIHost) -> MCIHostStatus {
         match voltage {
             MCIHostOperationVoltage::Voltage300V => {
                 host.curr_voltage.set(voltage);
@@ -174,7 +172,7 @@ impl MCIHostDevice for SDIFDev {
         Ok(())
     }
 
-    fn execute_tuning(&self, _tuning_cmd: u32, _rev_buf: &mut Vec<u32>, _block_size: u32) -> MCIHostStatus {
+    pub fn execute_tuning(&self, _tuning_cmd: u32, _rev_buf: &mut Vec<u32>, _block_size: u32) -> MCIHostStatus {
         Ok(())
     }
 
@@ -194,7 +192,7 @@ impl MCIHostDevice for SDIFDev {
         !self.hc.borrow().check_if_card_busy()
     }
 
-    fn convert_data_to_little_endian(&self, data: &mut Vec<u32>, word_size: usize, format: MCIHostDataPacketFormat,host:&MCIHost) -> MCIHostStatus {
+    pub fn convert_data_to_little_endian(&self, data: &mut Vec<u32>, word_size: usize, format: MCIHostDataPacketFormat,host:&MCIHost) -> MCIHostStatus {
         if host.config.endian_mode == MCIHostEndianMode::Little && 
              format == MCIHostDataPacketFormat::MSBFirst {
             for i in 0..word_size {
@@ -216,11 +214,11 @@ impl MCIHostDevice for SDIFDev {
         Ok(())
      }
 
-    fn card_detect_init(&self, _cd: &MCIHostCardDetect) -> MCIHostStatus {
+    pub fn card_detect_init(&self, _cd: &MCIHostCardDetect) -> MCIHostStatus {
          Ok(())
     }
 
-    fn card_power_set(&self, _enable: bool) {
+    pub fn card_power_set(&self, _enable: bool) {
         
     }
 
@@ -235,7 +233,7 @@ impl MCIHostDevice for SDIFDev {
         Ok(())
     }
 
-    fn card_bus_width_set(&self, data_bus_width: MCIHostBusWdith) {
+    pub fn card_bus_width_set(&self, data_bus_width: MCIHostBusWdith) {
         match data_bus_width {
             MCIHostBusWdith::Bit1 => {
                 self.hc.borrow().bus_width_set(data_bus_width as u32);
@@ -252,7 +250,7 @@ impl MCIHostDevice for SDIFDev {
         }
     }
 
-    fn card_detect_status_polling(&self, wait_card_status: SDStatus, _timeout: u32, host:&MCIHost) -> MCIHostStatus {
+    pub fn card_detect_status_polling(&self, wait_card_status: SDStatus, _timeout: u32, host:&MCIHost) -> MCIHostStatus {
         let cd = host.cd.as_ref().ok_or(MCIHostError::NoData)?;
 
         let mut retry_times:usize = 100;
@@ -287,11 +285,11 @@ impl MCIHostDevice for SDIFDev {
         }
     }
 
-    fn card_active_send(&self) {
+    pub fn card_active_send(&self) {
         
     }
 
-    fn card_clock_set(&self, target_clock: u32, host:&MCIHost) -> u32 {
+    pub fn card_clock_set(&self, target_clock: u32, host:&MCIHost) -> u32 {
             
         // 如果当前时钟频率已经是目标频率，则直接返回
         if host.curr_clock_freq.get() == target_clock {
@@ -313,7 +311,7 @@ impl MCIHostDevice for SDIFDev {
         self.hc.borrow().clock_set(enable);
     }
 
-    fn card_is_busy(&self) -> bool {
+    pub fn card_is_busy(&self) -> bool {
         self.hc.borrow().check_if_card_busy()
     }
 
@@ -432,7 +430,7 @@ impl MCIHostDevice for SDIFDev {
     }
 
     #[cfg(feature="poll")]
-    fn transfer_function(&self,content: &mut MCIHostTransfer, host:&MCIHost) -> MCIHostStatus {
+    pub fn transfer_function(&self,content: &mut MCIHostTransfer, host:&MCIHost) -> MCIHostStatus {
         use crate::mci_host::err;
         use crate::aarch::invalidate;
 
@@ -483,8 +481,8 @@ impl MCIHostDevice for SDIFDev {
     }
 
     #[cfg(feature="irq")]
-    fn transfer_function(&self, content: &mut MCIHostTransfer, host: &MCIHost) -> MCIHostStatus {
-        use crate::{mci::regs::{MCIDMACIntEn, MCIDMACStatus, MCIRawInts}, osa::consts::{FSDIF_TRANS_ERR_EVENTS, SDMMC_OSA_EVENT_FLAG_AND, SDMMC_OSA_EVENT_FLAG_OR, SDMMC_OSA_EVENT_TRANSFER_DATA_SUCCESS}};
+    pub fn transfer_function(&self, content: &mut MCIHostTransfer, host: &MCIHost) -> MCIHostStatus {
+        use crate::{mci::regs::{MCIDMACIntEn, MCIDMACStatus, MCIRawInts}, osa::consts::{FSDIF_TRANS_ERR_EVENTS, SDMMC_OSA_EVENT_FLAG_AND, SDMMC_OSA_EVENT_FLAG_OR, SDMMC_OSA_EVENT_TRANSFER_CMD_SUCCESS, SDMMC_OSA_EVENT_TRANSFER_DATA_SUCCESS}};
         use crate::aarch::invalidate;
 
         self.pre_command(content, host)?;
