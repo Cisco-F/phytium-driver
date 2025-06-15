@@ -11,17 +11,14 @@ mod mci_host_card_detect;
 
 use core::{cell::Cell, ptr::NonNull};
 
-use alloc::{boxed::Box, rc::Rc, sync::Arc};
+use alloc::{boxed::Box, rc::Rc};
 
 use constants::*;
 use err::{MCIHostError, MCIHostStatus};
-use log::info;
 use mci_host_card_detect::MCIHostCardDetect;
 use mci_host_config::MCIHostConfig;
 use mci_host_transfer::{MCIHostCmd, MCIHostTransfer};
 use mci_sdif::sdif_device::SDIFDev;
-
-use crate::mci::fsdif_interrupt_handler;
 
 type MCIHostCardIntFn = fn();
 
@@ -166,7 +163,6 @@ impl MCIHost {
         content.set_cmd(Some(command));
         
         let err = self.dev.transfer_function(&mut content,self);
-        // let err = self.dev.send_cmd0(&mut content, self);
         
         if err.is_err() {
             return Err(MCIHostError::TransferFailed);

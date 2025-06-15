@@ -91,7 +91,7 @@ pub fn fsdif_interrupt_handler() {
     }
 
     // handle card detect event
-    // todo 我们现在尚未实现卡检测相关事件
+    // todo 尚未实现卡检测相关事件
     // if events.bits() & event_mask.bits() & MCIRawInts::CD_BIT.bits() != 0 &&
     //     !self.config().non_removable() 
     // {
@@ -103,11 +103,6 @@ pub fn fsdif_interrupt_handler() {
     if dmac_events.contains(MCIDMACStatus::DMAC_ERR_INTS_MASK) || 
         events.contains(MCIRawInts::CMD_ERR_INTS_MASK)
     {  
-        // error!(
-        //     "Cmd index:{}, arg: 0x{:x}",
-        //     cur_cmd_index(),
-        //     cur_cmd_arg(),
-        // );
         error!(
             "ERR: events: 0x{:x}, mask: 0x{:x}, dmac_evts: 0x{:x}, dmac_mask: {:x}",
             events.bits(), event_mask.bits(), dmac_events.bits(), dmac_evt_mask.bits()
@@ -123,13 +118,13 @@ pub fn fsdif_interrupt_handler() {
         cmd_done();
         data_done(events.bits(), dmac_events.bits());
     } 
-    // else if events.contains(MCIRawInts::CMD_BIT) ||
-    //     (events.contains(MCIRawInts::HTO_BIT) && self.cur_cmd_index() == MCI::SWITCH_VOLTAGE as isize) // handle cmd done
-    // {
-    //     warn!("cmd over!");
-    //     cmd_done();
-    // }
-    else if events.contains(MCIRawInts::CMD_BIT) {
+    else if events.contains(MCIRawInts::CMD_BIT) ||
+        (events.contains(MCIRawInts::HTO_BIT) && self.cur_cmd_index() == MCI::SWITCH_VOLTAGE as isize) 
+    {
+        warn!("cmd over!");
+        cmd_done();
+    }
+    else if events.contains(MCIRawInts::CMD_BIT) { // handle cmd done
         warn!("cmd over!");
         cmd_done();
     }

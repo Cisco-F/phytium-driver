@@ -17,39 +17,22 @@ use super::regs::*;
 
 impl MCI {
     pub(crate) fn private_cmd_send(&self,cmd:MCICmd, arg: u32) -> MCIResult{
-        // self.interrupt_mask_set(MCIIntrType::GeneralIntr, MCIIntMask::INTS_DATA_MASK.bits(), false);
-        // self.clear_interrupt_status();
         let reg = self.config.reg();
-
-        warn!("raw ints: 0x{:x}", reg.read_reg::<MCIRawInts>());
-        warn!("int mask: 0x{:x}", reg.read_reg::<MCIIntMask>());
-        warn!("cmd: 0x{:x}", cmd.bits());
-        warn!("cmd arg: 0x{:x}", arg);
 
         reg.retry_for(|reg: MCIStatus| {
             !reg.contains(MCIStatus::DATA_BUSY)
         }, Some(RETRIES_TIMEOUT))?;
         reg.write_reg(MCICmdArg::from_bits_truncate(arg));
 
-        // unsafe { dsb() };/* drain writebuffer */
-        compiler_fence(Ordering::SeqCst);
+        unsafe { dsb() };/* drain writebuffer */
 
-        let int_mask = MCIIntMask::INTS_CMD_MASK | MCIIntMask::INTS_DATA_MASK;
-
-        info!("raw ints 0x{:x}", reg.read_reg::<MCIRawInts>().bits());
         let cmd_reg = MCICmd::START | cmd;
-        info!("writing cmd reg");
         reg.write_reg(cmd_reg);
-        // self.interrupt_mask_set(MCIIntrType::GeneralIntr, int_mask.bits(), true);
-        // self.interrupt_mask_set(MCIIntrType::DmaIntr, MCIDMACIntEn::INTS_MASK.bits(), true);
-        // info!("after write reg");
 
         reg.retry_for(|reg:MCICmd|{
             !reg.contains(MCICmd::START)
         }, Some(RETRIES_TIMEOUT))?;
-        warn!("after write cmd reg, raw_ints: 0x{:x}", reg.read_reg::<MCIRawInts>());
-
-        info!("private cmd ok");
+        
         Ok(())
     }
 
@@ -115,10 +98,7 @@ impl MCI {
         debug!("    cmd: 0x{:x}", raw_cmd.bits());
         debug!("    arg: 0x{:x}", cmd_data.cmdarg());
         /* enable related interrupt */
-        // self.clear_interrupt_status();
-        // warn!("in cmd transfer int mask is {:x}", reg.read_reg::<MCIIntMask>());
         self.interrupt_mask_set(MCIIntrType::GeneralIntr, MCIIntMask::INTS_CMD_MASK.bits(), true);
-        info!("sending private cmd");
         self.private_cmd_send(raw_cmd, cmd_data.cmdarg())?;
         Ok(())
     }

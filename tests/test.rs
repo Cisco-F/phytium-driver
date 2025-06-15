@@ -6,14 +6,21 @@ extern crate alloc;
 
 #[bare_test::tests]
 mod tests {
-    use core::time::Duration;
+    use core::{ptr::NonNull, time::Duration};
 
     use alloc::vec::Vec;
     use bare_test::{
-        driver::{Descriptor, Device}, globals::{global_val, PlatformInfoKind}, irq::{IrqHandleResult, IrqParam}, mem::mmu::iomap, time::spin_delay, GetIrqConfig
+        globals::{global_val, PlatformInfoKind}, 
+        irq::{IrqHandleResult, IrqParam}, 
+        mem::mmu::iomap, 
+        time::spin_delay, 
+        GetIrqConfig
     };
-    use log::{info, *};
-    use phytium_mci::{iopad::PAD_ADDRESS, mci::{fsdif_interrupt_handler, regs::{MCICtrl, MCIDMACStatus, MCIIntMask, MCIRawInts, MCIReg}}, sd::{SdCard, REG_BASE}, *};
+    use log::*;
+    use phytium_mci::{
+        mci::{fsdif_interrupt_handler, 
+        regs::{MCICtrl, MCIDMACStatus, MCIIntMask, MCIRawInts, MCIReg}}, sd::{SdCard, REG_BASE}, set_impl, IoPad, Kernel, PAD_ADDRESS
+    };
 
     const SD_START_BLOCK: u32 = 131072;
     const SD_USE_BLOCK: u32 = 10;
@@ -22,86 +29,53 @@ mod tests {
 
     #[test]
     fn test_work() {
+        if cfg!(feature = "irq") {
+            compile_error!("feature irq isn't finished yet!");
+        }
+
         let fdt = match &global_val().platform_info {
             PlatformInfoKind::DeviceTree(fdt) => fdt.get(),
             // _ => panic!("unsupported platform"),
         };
 
         let mci0 = fdt.find_compatible(&["phytium,mci"]).next().unwrap();
-        let intr = mci0.interrupts().unwrap().next().unwrap().next().unwrap();
-        let prop = mci0.propertys().next().unwrap();
-        let name = prop.name;
-        info!("intr {}", intr);
-        info!("propety name {}", name);
-
-        let info= mci0.irq_info().unwrap();
-        info!("irq parent {:?}", info.irq_parent);
-
-        let parent = mci0.interrupt_parent().unwrap().node;
-        let p_name = parent.name;
-        let a = parent.interrupts().unwrap().next().unwrap().next().unwrap();
-        info!("p name {}", p_name);
-        info!("p intr {}", a);
-
         let reg = mci0.reg().unwrap().next().unwrap();
-        let p_reg = parent.reg().unwrap().next().unwrap();
-
         info!(
             "mci0 reg: {:#x},mci0 reg size: {:#x}",
             reg.address,
             reg.size.unwrap()
         );
-        info!(
-            "parent reg: {:#x}, reg size: {:#x}",
-            p_reg.address,
-            p_reg.size.unwrap()
-        );
-        
         let mci_reg_base = iomap((reg.address as usize).into(), reg.size.unwrap());
-        
-        let iopad_reg_base = iomap((PAD_ADDRESS as usize).into(), 0x2000);
-        
+        clear_pending_irq(mci_reg_base);
         unsafe { REG_BASE = mci_reg_base; }
-        
-        let reg = MCIReg::new(mci_reg_base);
-        let raw_ints = reg.read_reg::<MCIRawInts>();
-        let dmac_statuc = reg.read_reg::<MCIDMACStatus>();
-        info!("raw ints {:x}", raw_ints);
-        info!("int mask {:x}", reg.read_reg::<MCIIntMask>());
-        info!("ctrl {:x}", reg.read_reg::<MCICtrl>());
-        info!("dmac status {:x}", dmac_statuc);
-        reg.write_reg(raw_ints);
-        reg.write_reg(dmac_statuc);
-        // reg.set_reg(MCICtrl::INT_ENABLE);
-        drop(reg);
 
-        let param = IrqParam {
-            intc: info.irq_parent,
-            cfg: info.cfgs[0].clone(),
-        };
-        
-        param.register_builder(|_irq_num| {
-            info!("capture irq: ");
-            fsdif_interrupt_handler();
-            // let reg = unsafe { MCIReg::new(REG_BASE) };
-            // info!("raw_ints in irq: {:x}", reg.read_reg::<MCIRawInts>());
-            // info!("dmac {:x}", reg.read_reg::<MCIDMACStatus>());
-            // register_dump(&reg);
-            IrqHandleResult::Handled
-        })
-        .register();
-
-        let cfg = info.cfgs[0].clone();
-        info!("irq id {:?}", cfg.irq);
-        info!("trigger is {:?}", cfg.trigger);
-
+        let iopad_reg_base = iomap((PAD_ADDRESS as usize).into(), 0x2000);
         let iopad = IoPad::new(iopad_reg_base);
-        
-        let sdcard = SdCard::new(mci_reg_base,iopad);
-        let device = Device::new(Descriptor::default(), sdcard);
-        if let Err(err) = device.spin_try_borrow_by(0.into()).init(mci_reg_base) {
+
+        if cfg!(feature = "irq") {
+            let irq_info= mci0.irq_info().unwrap();
+            IrqParam {
+                intc: irq_info.irq_parent,
+                cfg: irq_info.cfgs[0].clone(),
+            }
+            .register_builder(|_irq_num| {
+                fsdif_interrupt_handler();
+                IrqHandleResult::Handled
+            })
+            .register();
+            info!(
+                "registered irq {:?} for {:?}, irq_parent: {:?}, trigger: {:?}",
+                irq_info.cfgs[0].irq,
+                mci0.name(),
+                irq_info.irq_parent,
+                irq_info.cfgs[0].trigger
+            );
+        }
+
+        let mut sdcard = SdCard::new(mci_reg_base,iopad);
+        if let Err(err) = sdcard.init(mci_reg_base) {
             error!("Sd Card Init Fail, error = {:?}",err);
-            panic!("Sd Card Init Fail");
+            panic!();
         }
         
         ////////////////////// SD card init finished //////////////////////
@@ -113,11 +87,11 @@ mod tests {
             buffer[i] = i as u32;
         }
 
-        device.spin_try_borrow_by(0.into()).write_blocks(&mut buffer, SD_START_BLOCK, SD_USE_BLOCK).unwrap();
+        sdcard.write_blocks(&mut buffer, SD_START_BLOCK, SD_USE_BLOCK).unwrap();
 
         let mut receive_buf = Vec::new();
 
-        device.spin_try_borrow_by(0.into()).read_blocks(&mut receive_buf, SD_START_BLOCK, SD_USE_BLOCK).unwrap();
+        sdcard.read_blocks(&mut receive_buf, SD_START_BLOCK, SD_USE_BLOCK).unwrap();
 
         for i in 0..receive_buf.len() {
             assert_eq!(receive_buf[i], buffer[i]);
@@ -138,6 +112,22 @@ mod tests {
         spin_delay(duration);
     }
 
+    fn clear_pending_irq(reg_base: NonNull<u8>) {
+        let reg = MCIReg::new(reg_base);
+        let raw_ints = reg.read_reg::<MCIRawInts>();
+        let dmac_status = reg.read_reg::<MCIDMACStatus>();
+        info!("before SD card init, clear pending irq!");
+        info!(
+            "int_mask 0x{:x}, ctrl 0x{:x}, raw_ints 0x{:x}, dmac_status 0x{:x}",
+            reg.read_reg::<MCIIntMask>(),
+            reg.read_reg::<MCICtrl>(),
+            reg.read_reg::<MCIRawInts>(),
+            reg.read_reg::<MCIDMACStatus>()
+        );
+        reg.write_reg(raw_ints);
+        reg.write_reg(dmac_status);
+        drop(reg);
+    }
     struct KernelImpl;
 
     impl Kernel for KernelImpl {

@@ -1,4 +1,5 @@
 //! 注意不应把重名的子模块设为pub
+#![allow(unused)]
 pub mod consts;
 pub mod regs;
 mod err;
@@ -38,8 +39,6 @@ pub struct MCI {
     cur_cmd: Option<MCICmdData>,
     curr_timing: MCITiming,
     io_pad: Option<IoPad>,
-    // gic_handler: Gic,
-    evt_arg: Option<NonNull<u8>>,   // 包裹一个dev实例
 }
 
 impl MCI {
@@ -59,8 +58,6 @@ impl MCI {
             cur_cmd: None,
             io_pad: None,
             desc_list: FSdifIDmaDescList::new(),
-            // gic_handler: Gic::interrput_early_init(),
-            evt_arg: None,
         }
     }
 
@@ -73,18 +70,12 @@ impl MCI {
             cur_cmd: None,
             io_pad: None,
             desc_list: FSdifIDmaDescList::new(),
-            // gic_handler: Gic::interrput_early_init(),
-            evt_arg: None,
         }
     }
 
     pub(crate) fn config(&self) -> &MCIConfig {
         &self.config
     }
-
-    // pub(crate) fn gic_handler_mut(&mut self) -> &mut Gic {
-    //     &mut self.gic_handler
-    // }
 
     pub(crate) fn cur_cmd(&self) -> Option<&MCICmdData> {
         self.cur_cmd.as_ref()
@@ -103,14 +94,6 @@ impl MCI {
             None => -1,
         }
     }
-
-    pub(crate) fn register_event_arg(&mut self, arg: NonNull<u8>) {
-        self.evt_arg = Some(arg);
-    }
-
-    // pub(crate) fn evt_args(&self, evt: FSdifEvtType) -> &Option<Box<dyn MCIHostDevice>> {
-    //     &self.evt_args[evt as usize]
-    // }
 }
 
 /// MCI pub API
@@ -227,7 +210,7 @@ impl MCI {
                 if cur_cmd_index == Self::SWITCH_VOLTAGE as u32 {
                     self.private_cmd11_send(reg_val | cmd_reg)
                 } else {
-                    info!("updating clock, reg val 0x{:x}", reg_val.bits());
+                    info!("updating clock, reg_val 0x{:x}", reg_val.bits());
                     self.private_cmd_send(reg_val, 0)
                 }{
                 error!("update ext clock failed !!!");
@@ -249,7 +232,7 @@ impl MCI {
             if cur_cmd_index == Self::SWITCH_VOLTAGE as u32 {
                 self.private_cmd11_send(reg_val | cmd_reg)?;
             } else {
-                info!("updating clock for clock divider, regval 0x{:x}", reg_val.bits());
+                info!("updating clock for clock divider, reg_val 0x{:x}", reg_val.bits());
                 self.private_cmd_send(reg_val, 0)?;
             }
 
@@ -261,6 +244,7 @@ impl MCI {
             if cur_cmd_index == Self::SWITCH_VOLTAGE as u32 {
                 self.private_cmd11_send(reg_val | cmd_reg)?;
             } else {
+                info!("switching voltage, reg_val is 0x{:x}", reg_val.bits());
                 self.private_cmd_send(reg_val, 0)?;
             }
 
@@ -621,7 +605,6 @@ impl MCI {
         }
 
         /* send private command to update clock */
-        info!("send private command to update clock, cmd is 0x{:x}", MCICmd::UPD_CLK.bits());
         self.private_cmd_send(MCICmd::UPD_CLK, 0)?;
 
         /* reset card for no-removeable media, e.g. eMMC */
