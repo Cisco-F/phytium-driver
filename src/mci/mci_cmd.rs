@@ -36,8 +36,6 @@ impl MCI {
 
         let int_mask = MCIIntMask::INTS_CMD_MASK | MCIIntMask::INTS_DATA_MASK;
 
-        unregister_irq(104.into());
-
         info!("raw ints 0x{:x}", reg.read_reg::<MCIRawInts>().bits());
         let cmd_reg = MCICmd::START | cmd;
         info!("writing cmd reg");
@@ -45,20 +43,6 @@ impl MCI {
         // self.interrupt_mask_set(MCIIntrType::GeneralIntr, int_mask.bits(), true);
         // self.interrupt_mask_set(MCIIntrType::DmaIntr, MCIDMACIntEn::INTS_MASK.bits(), true);
         // info!("after write reg");
-
-        // IrqParam {
-        //     intc: 0.into(),
-        //     cfg: IrqConfig {
-        //         irq: 104.into(),
-        //         trigger: Trigger::LevelHigh,
-        //     }
-        // }.register_builder(|irq| {
-        //     info!("cap irq: {:?}", irq);
-        //     bare_test::irq::IrqHandleResult::Handled
-        // })
-        // .register();
-
-
 
         reg.retry_for(|reg:MCICmd|{
             !reg.contains(MCICmd::START)
@@ -131,8 +115,8 @@ impl MCI {
         debug!("    cmd: 0x{:x}", raw_cmd.bits());
         debug!("    arg: 0x{:x}", cmd_data.cmdarg());
         /* enable related interrupt */
-        self.clear_interrupt_status();
-        warn!("in cmd transfer int mask is {:x}", reg.read_reg::<MCIIntMask>());
+        // self.clear_interrupt_status();
+        // warn!("in cmd transfer int mask is {:x}", reg.read_reg::<MCIIntMask>());
         self.interrupt_mask_set(MCIIntrType::GeneralIntr, MCIIntMask::INTS_CMD_MASK.bits(), true);
         info!("sending private cmd");
         self.private_cmd_send(raw_cmd, cmd_data.cmdarg())?;

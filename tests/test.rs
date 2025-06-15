@@ -56,13 +56,13 @@ mod tests {
             p_reg.address,
             p_reg.size.unwrap()
         );
-
+        
         let mci_reg_base = iomap((reg.address as usize).into(), reg.size.unwrap());
-
+        
         let iopad_reg_base = iomap((PAD_ADDRESS as usize).into(), 0x2000);
-
+        
         unsafe { REG_BASE = mci_reg_base; }
-
+        
         let reg = MCIReg::new(mci_reg_base);
         let raw_ints = reg.read_reg::<MCIRawInts>();
         let dmac_statuc = reg.read_reg::<MCIDMACStatus>();
@@ -75,25 +75,25 @@ mod tests {
         // reg.set_reg(MCICtrl::INT_ENABLE);
         drop(reg);
 
+        let param = IrqParam {
+            intc: info.irq_parent,
+            cfg: info.cfgs[0].clone(),
+        };
+        
+        param.register_builder(|_irq_num| {
+            info!("capture irq: ");
+            fsdif_interrupt_handler();
+            // let reg = unsafe { MCIReg::new(REG_BASE) };
+            // info!("raw_ints in irq: {:x}", reg.read_reg::<MCIRawInts>());
+            // info!("dmac {:x}", reg.read_reg::<MCIDMACStatus>());
+            // register_dump(&reg);
+            IrqHandleResult::Handled
+        })
+        .register();
+
         let cfg = info.cfgs[0].clone();
         info!("irq id {:?}", cfg.irq);
         info!("trigger is {:?}", cfg.trigger);
-
-        // let param = IrqParam {
-        //     intc: info.irq_parent,
-        //     cfg: info.cfgs[0].clone(),
-        // };
-        
-        // param.register_builder(|_irq_num| {
-        //     info!("capture irq: ");
-        //     // fsdif_interrupt_handler();
-        //     // let reg = unsafe { MCIReg::new(REG_BASE) };
-        //     // info!("raw_ints in irq: {:x}", reg.read_reg::<MCIRawInts>());
-        //     // info!("dmac {:x}", reg.read_reg::<MCIDMACStatus>());
-        //     // register_dump(&reg);
-        //     IrqHandleResult::Handled
-        // })
-        // .register();
 
         let iopad = IoPad::new(iopad_reg_base);
         

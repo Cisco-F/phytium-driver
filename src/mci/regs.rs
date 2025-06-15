@@ -221,7 +221,7 @@ bitflags! {
         // const INTS_DATA_MASK = DTO_BIT | DCRC_BIT | DRTO_BIT | SBE_BCI_BIT;
         const INTS_DATA_MASK = 0x2288;
         // const INTS_CMD_MASK = RE_BIT | CMD_BIT | RCRC_BIT | RTO_BIT | HTO_BIT | HLE_BIT;
-        const INTS_CMD_MASK = 0x5446;
+        const INTS_CMD_MASK = 0x1546;
         
     }
 }

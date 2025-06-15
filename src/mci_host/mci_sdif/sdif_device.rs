@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use core::cell::{Cell, RefCell};
 use core::mem::take;
 use core::ptr::NonNull;
