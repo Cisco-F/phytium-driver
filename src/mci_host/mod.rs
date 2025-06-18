@@ -62,23 +62,6 @@ impl MCIHost {
         }
     }
 
-    // pub fn weak(&self) -> MCIHostWeak {
-    //     MCIHostWeak {
-    //         dev: Arc::downgrade(&self.dev),
-    //         config: self.config.clone(),
-    //         curr_voltage: self.curr_voltage.clone(),
-    //         curr_bus_width: self.curr_bus_width,
-    //         curr_clock_freq: self.curr_clock_freq.clone(),
-    //         source_clock_hz: self.source_clock_hz,
-    //         capability: self.capability.clone(),
-    //         max_block_count: self.max_block_count.clone(),
-    //         max_block_size: self.max_block_size,
-    //         tuning_type: self.tuning_type,
-    //         cd: self.cd.clone(),
-    //         card_int: self.card_int,
-    //     }
-    // }
-
     pub(crate) fn card_select(&self,relative_address:u32,is_selected:bool) -> MCIHostStatus {
         let mut command = MCIHostCmd::new();
 
@@ -216,75 +199,4 @@ impl MCIHost {
         self.dev.init(addr,self)
     }
 
-    // pub fn setup_irq(&mut self) -> Result<(), &'static str> {
-    //     info!("setting irq");
-    //     let irq_num = 72;
-    //     let dev_arc = Arc::clone(&self.dev);
-    //     IrqParam {
-    //         intc: 0.into(),
-    //         cfg: IrqConfig {
-    //             irq: (irq_num as usize).into(),
-    //             trigger: Trigger::LevelHigh,
-    //         }
-    //     }
-    //     .register_builder({
-    //         move |_irq| {
-    //             info!("mark");
-    //             // fsdif_interrupt_handler()
-    //             // info!("mark2");
-    //             IrqHandleResult::Handled
-    //         }
-    //     })
-    //     .priority(100)
-    //     .register();
-
-    //     info!("irq set up ok!");
-    //     Ok(())
-    // }
-    
-    // pub fn fsdif_interrupt_handler(&self) {
-    //     self.dev.as_ref().fsdif_interrupt_handler();
-    // }
 }
-
-#[allow(unused)]
-impl MCIHost {
-    // todo 将 dev 的操作套壳
-}
-
-// pub struct MCIHostWeak {
-//     pub(crate) dev: Weak<Box<dyn MCIHostDevice>>,
-//     pub(crate) config: MCIHostConfig,                  
-//     pub(crate) curr_voltage: Cell<MCIHostOperationVoltage>,  
-//     pub(crate) curr_bus_width: u32,                    
-//     pub(crate) curr_clock_freq: Cell<u32>,                   
-
-//     pub(crate) source_clock_hz: u32,                   
-//     pub(crate) capability: MCIHostCapability,          
-//     pub(crate) max_block_count: Cell<u32>,                   
-//     pub(crate) max_block_size: u32,                    
-//     pub(crate) tuning_type: u8,                        
-
-//     pub(crate) cd: Option<Rc<MCIHostCardDetect>>,         // 卡检测
-//     pub(crate) card_int: MCIHostCardIntFn,
-// }
-
-// impl MCIHostWeak {
-//     pub fn upgrade(&self) -> Option<MCIHost> {
-//         self.dev.upgrade().map(|dev| MCIHost {
-//             dev,
-//             config: self.config.clone(),
-//             curr_voltage: self.curr_voltage.clone(),
-//             curr_bus_width: self.curr_bus_width,
-//             curr_clock_freq: self.curr_clock_freq.clone(),
-//             source_clock_hz: self.source_clock_hz,
-//             capability: self.capability.clone(),
-//             max_block_count: self.max_block_count.clone(),
-//             max_block_size: self.max_block_size,
-//             tuning_type: self.tuning_type,
-//             cd: self.cd.clone(),
-//             card_int: self.card_int,
-//         })
-//     }
-// }
-

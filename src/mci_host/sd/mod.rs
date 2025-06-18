@@ -21,7 +21,7 @@ use crate::mci_host::mci_host_config::MCIHostType;
 use crate::mci_host::mci_sdif::sdif_device::SDIFDev;
 use crate::mci_host::MCIHost;
 use crate::osa::{osa_alloc_aligned, osa_init};
-use crate::{sleep, IoPad};
+use crate::{mmap, sleep, IoPad};
 use crate::tools::swap_word_byte_sequence_u32;
 
 use super::err::{MCIHostError, MCIHostStatus};
@@ -745,6 +745,7 @@ impl SdCard{
         func_group_info[2] = (func_status[2] >> 16) as u16;
         func_group_info[1] = (func_status[2]) as u16;
         func_group_info[0] = (func_status[3] >> 16) as u16;
+        info!("func_group_info: {:#?}", func_group_info);
         
         let current_func_status = ((func_status[3] & 0xff) << 8) | (func_status[4] >> 24);
 
@@ -1569,6 +1570,7 @@ impl SdCard {
         }
 
         // let raw_src = content.data_mut().unwrap().rx_data_mut().unwrap();
+        warn!("src from transfer {:#?}", content.data_mut().unwrap().rx_data_mut().unwrap());
         let mut raw_src = Vec::new();
         raw_src.push(1132479746 as u32);
         raw_src.push(0);

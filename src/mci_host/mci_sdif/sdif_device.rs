@@ -20,7 +20,7 @@ use crate::mci_host::MCIHostCardIntFn;
 use crate::osa::{osa_alloc_aligned, OSAEvent};
 use crate::osa::pool_buffer::PoolBuffer;
 use crate::sd::consts::SD_BLOCK_SIZE;
-use crate::{sleep, IoPad};
+use crate::{mmap, sleep, IoPad};
 use crate::tools::swap_half_word_byte_sequence_u32;
 use super::consts::SDStatus;
 use super::MCIHost;
@@ -49,6 +49,7 @@ impl SDIFDev {
             }
             Ok(buffer) => buffer,
         };
+        warn!("rw_desc buffer at {:x}, pa {:x}", rw_desc.addr().as_ptr() as usize, mmap(rw_desc.addr(), length, dma_api::Direction::ToDevice));
 
         Self {
             hc: MCI::new(MCIConfig::new(addr)).into(),
@@ -60,15 +61,6 @@ impl SDIFDev {
     }
     pub fn iopad_set(&self,iopad:IoPad) {
         self.hc.borrow_mut().iopad_set(iopad);
-    }
-    pub fn event_set(&self, event: u32) {
-        self.hc_evt.borrow_mut().osa_event_set(event);
-    }
-
-    pub fn register_event_arg(&self) {
-        info!("registering event arg");
-        let self_ptr = unsafe { NonNull::new_unchecked(self as *const _ as *mut u8) };
-        self.hc.borrow_mut().register_event_arg(self_ptr);
     }
 }
 
@@ -404,9 +396,11 @@ impl SDIFDev {
             out_data.blkcnt_set(in_data.block_count());
             out_data.datalen_set(in_data.block_size() as u32 * in_data.block_count() );
 
-            let slice = DSlice::from(&buf[..]);
-            out_data.buf_dma_set(slice.bus_addr() as usize);
-            drop(slice);
+            // let slice = DSlice::from(&buf[..]);
+            let bus_addr = mmap(NonNull::new(buf.as_ptr() as *mut u8).unwrap().into(), buf.len() * size_of::<u32>(), dma_api::Direction::ToDevice);
+            out_data.buf_dma_set(bus_addr as usize);
+            warn!("in covert command info buf va {:p}, pa {:x}", buf.as_ptr(), bus_addr);
+            // drop(slice);
 
             // let buf_ptr = unsafe { NonNull::new_unchecked(buf.as_ptr() as usize as *mut u32) };
             // let bus_addr = map(buf_ptr.cast(), size_of_val(&buf[..]), Direction::Bidirectional);
@@ -433,8 +427,7 @@ impl SDIFDev {
 
     #[cfg(feature="poll")]
     pub fn transfer_function(&self,content: &mut MCIHostTransfer, host:&MCIHost) -> MCIHostStatus {
-        use crate::mci_host::err;
-        use crate::aarch::invalidate;
+        use crate::invalidate;
 
         self.pre_command(content,host)?;
         let mut cmd_data = self.covert_command_info(content);
@@ -455,12 +448,12 @@ impl SDIFDev {
             }
         }
 
-        // unsafe { dsb(); }
+        unsafe { dsb(); }
 
         //TODO 这里的CLONE 会降低驱动速度,需要解决这个性能问题 可能Take出来直接用更好
         if let Some(_) = content.data() {
             let data = cmd_data.get_data().unwrap();
-            unsafe { invalidate(data.buf().unwrap().as_ptr() as *const u8, data.buf().unwrap().len() * 4); }
+            invalidate(NonNull::new(data.buf().unwrap().as_ptr() as *mut u8).unwrap(), data.buf().unwrap().len() * 4);
             if let Some(rx_data) = data.buf() {
                 if let Some(in_data) = content.data_mut() {
                     in_data.rx_data_set(Some(rx_data.clone()));

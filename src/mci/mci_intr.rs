@@ -118,12 +118,12 @@ pub fn fsdif_interrupt_handler() {
         cmd_done();
         data_done(events.bits(), dmac_events.bits());
     } 
-    else if events.contains(MCIRawInts::CMD_BIT) ||
-        (events.contains(MCIRawInts::HTO_BIT) && self.cur_cmd_index() == MCI::SWITCH_VOLTAGE as isize) 
-    {
-        warn!("cmd over!");
-        cmd_done();
-    }
+    // else if events.contains(MCIRawInts::CMD_BIT) ||
+    //     (events.contains(MCIRawInts::HTO_BIT) && self.cur_cmd_index() == MCI::SWITCH_VOLTAGE as isize) 
+    // {
+    //     warn!("cmd over!");
+    //     cmd_done();
+    // }
     else if events.contains(MCIRawInts::CMD_BIT) { // handle cmd done
         warn!("cmd over!");
         cmd_done();

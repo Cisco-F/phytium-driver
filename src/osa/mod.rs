@@ -1,6 +1,6 @@
 use core::{alloc::Layout, mem::MaybeUninit, ptr::NonNull, sync::atomic::{AtomicU32, Ordering}};
 
-use alloc::sync::Arc;
+use alloc::{boxed::Box, sync::Arc};
 use consts::{MAX_POOL_SIZE, SDMMC_OSA_EVENT_FLAG_AND};
 use err::FMempError;
 use log::{error, info};
@@ -26,8 +26,8 @@ pub struct FMemp<'a> {
 
 lazy_static! {
     /// Global memory pool manager
-    pub static ref GLOBAL_FMEMP: Mutex<FMemp<'static>> = 
-        Mutex::new(FMemp::new());
+    pub static ref GLOBAL_FMEMP: Mutex<Box<FMemp<'static>>> = 
+        Mutex::new(Box::new(FMemp::new()));
 }
 
 impl<'a> FMemp<'a> {

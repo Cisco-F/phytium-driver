@@ -1,20 +1,17 @@
 #![no_std]
 #![no_main]
 #![feature(used_with_arg)]
+#![feature(stdarch_arm_barrier)]
 
 extern crate alloc;
 
 #[bare_test::tests]
 mod tests {
-    use core::{ptr::NonNull, time::Duration};
+    use core::{arch::{aarch64::{__dsb, __isb, SY}, asm}, ptr::NonNull, time::Duration};
 
     use alloc::vec::Vec;
     use bare_test::{
-        globals::{global_val, PlatformInfoKind}, 
-        irq::{IrqHandleResult, IrqParam}, 
-        mem::mmu::iomap, 
-        time::spin_delay, 
-        GetIrqConfig
+        globals::{global_val, PlatformInfoKind}, irq::{IrqHandleResult, IrqParam}, mem::{mmu::iomap, PhysAddr, VirtAddr}, platform_if::{CacheOp, RegionKind}, time::spin_delay, GetIrqConfig
     };
     use log::*;
     use phytium_mci::{
@@ -29,9 +26,9 @@ mod tests {
 
     #[test]
     fn test_work() {
-        if cfg!(feature = "irq") {
-            compile_error!("feature irq isn't finished yet!");
-        }
+        // if cfg!(feature = "irq") {
+        //     compile_error!("feature irq isn't finished yet!");
+        // }
 
         let fdt = match &global_val().platform_info {
             PlatformInfoKind::DeviceTree(fdt) => fdt.get(),
@@ -128,11 +125,75 @@ mod tests {
         reg.write_reg(dmac_status);
         drop(reg);
     }
+
+    #[inline(always)]
+    fn cache_line_size() -> usize {
+        unsafe {
+            let mut ctr_el0: u64;
+            asm!("mrs {}, ctr_el0", out(reg) ctr_el0);
+            let log2_cache_line_size = ((ctr_el0 >> 16) & 0xF) as usize;
+            // Calculate the cache line size
+            4 << log2_cache_line_size
+        }
+    }
+
+    #[inline(always)]
+    fn _dcache_line(op: CacheOp, addr: usize) {
+        unsafe {
+            match op {
+                CacheOp::Invalidate => asm!("dc ivac, {0}", in(reg) addr),
+                CacheOp::Clean => asm!("dc cvac, {0}", in(reg) addr),
+                CacheOp::CleanAndInvalidate => asm!("dc civac, {0}", in(reg) addr),
+            }
+        }
+    }
+
+    #[inline(always)]
+    fn dcache_range(op: CacheOp, addr: usize, size: usize) {
+        let start = addr;
+        let end = start + size;
+        let cache_line_size = cache_line_size();
+
+        let mut aligned_addr = addr & !(cache_line_size - 1);
+
+        while aligned_addr < end {
+            _dcache_line(op, aligned_addr);
+            aligned_addr += cache_line_size;
+        }
+
+        unsafe {
+            __dsb(SY);
+            __isb(SY);
+        }
+    }
+
     struct KernelImpl;
 
     impl Kernel for KernelImpl {
         fn sleep(duration: Duration) {
             sleep(duration);
+        }
+        fn mmap(virt_addr: NonNull<u8>, _size: usize, _direction: dma_api::Direction) -> u64 {
+            let vaddr = VirtAddr::from(virt_addr);
+            let paddr;
+            if virt_addr.as_ptr() as usize <= 0xffffe000001df000 {
+                paddr = PhysAddr::new(vaddr.raw() - 0xffff_e000_0000_0000);
+            } else if virt_addr.as_ptr() as usize >= 0xffffe10000000000 && virt_addr.as_ptr() as usize <= 0xffffe10000800000 {
+                paddr = PhysAddr::new(vaddr.raw() - 0xFFFF_FEFF_6FE2_1000);
+            } else if virt_addr.as_ptr() as usize >= 0xfffff000909df000 && virt_addr.as_ptr() as usize <= 0xfffff000fc000000 {
+                paddr = PhysAddr::new(vaddr.raw() - 0xFFFF_F000_0000_0000);
+            }
+            else {
+                panic!("unsupported mmap at {:x}!", vaddr.raw());
+            }
+            info!("virt_addr: {:x}, vaddr.raw: {:x}, pa {:x}", virt_addr.as_ptr() as usize, vaddr.raw(), paddr.raw());
+            paddr.raw() as _
+        }
+        fn flush(addr: NonNull<u8>, size: usize) {
+            dcache_range(CacheOp::Clean, addr.as_ptr() as _, size);
+        }
+        fn invalidate(addr: core::ptr::NonNull<u8>, size: usize) {
+            dcache_range(CacheOp::Invalidate, addr.as_ptr() as _, size);
         }
     }
 
