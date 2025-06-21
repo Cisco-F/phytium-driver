@@ -159,7 +159,7 @@ impl MCI {
             return Err(MCIError::InvalidState);
         }
 
-        let bus_addr = mmap(desc.addr(), desc.size(), dma_api::Direction::ToDevice);
+        let bus_addr = mmap(desc.addr());
         self.desc_list.first_desc_dma = bus_addr as usize;
         self.desc_list.first_desc = desc.addr().as_ptr() as *mut FSdifIDmaDesc;
         self.desc_list.desc_num = desc_num;

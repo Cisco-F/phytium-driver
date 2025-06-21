@@ -6,7 +6,6 @@ edition = "2021"
 [dependencies]
 tock-registers = "0.9.0"
 log = "0.4"
-dma-api = { version = "0.3", features = ["alloc"] }
 nb = "1.1"
 bitflags = "2.8"
 bytemuck = "1.22.0"

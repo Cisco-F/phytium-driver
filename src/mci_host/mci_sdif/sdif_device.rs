@@ -32,7 +32,7 @@ use crate::mci::mci_dma::FSdifIDmaDesc;
 pub(crate) struct SDIFDev {
     hc: RefCell<MCI>,                           // SDIF 硬件控制器
     hc_cfg: RefCell<MCIConfig>,                 // SDIF 配置
-    rw_desc: PoolBuffer,                        // DMA 描述符指针，用于管理数据传输 todo 考虑直接用vec或DVec保存
+    rw_desc: PoolBuffer,                        // DMA 描述符指针，用于管理数据传输
     desc_num: Cell<u32>,                        // 描述符数量，表示 DMA 描述符的数量
     hc_evt: RefCell<OSAEvent>,
 }
@@ -51,8 +51,7 @@ impl SDIFDev {
         debug!(
             "rw_desc buffer at {:x}, pa {:x}", 
             rw_desc.addr().as_ptr() as usize, 
-            mmap(rw_desc.addr(), length, 
-            dma_api::Direction::ToDevice)
+            mmap(rw_desc.addr())
         );
 
         Self {
@@ -384,8 +383,6 @@ impl SDIFDev {
             let buf = if let Some(rx_data) = in_data.rx_data_mut() {
                 // Handle receive data
                 flag |= MCICmdFlag::READ_DATA;
-                //TODO 这里的CLONE 会降低驱动速度,需要解决这个性能问题 可能Take出来直接用更好
-                // rx_data.clone()
                 take(rx_data)
             } else if let Some(tx_data) = in_data.tx_data_mut() {
                 // Handle transmit data
@@ -400,7 +397,7 @@ impl SDIFDev {
             out_data.blkcnt_set(in_data.block_count());
             out_data.datalen_set(in_data.block_size() as u32 * in_data.block_count() );
 
-            let bus_addr = mmap(NonNull::new(buf.as_ptr() as *mut u8).unwrap().into(), buf.len() * size_of::<u32>(), dma_api::Direction::ToDevice);
+            let bus_addr = mmap(NonNull::new(buf.as_ptr() as *mut u8).unwrap().into());
             out_data.buf_dma_set(bus_addr as usize);
             flush(NonNull::new(buf.as_ptr() as *mut u8).unwrap(), buf.len() * size_of::<u32>());
             debug!("in covert command info, buf va {:p}, pa {:x}", buf.as_ptr(), bus_addr);

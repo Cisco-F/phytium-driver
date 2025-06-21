@@ -13,14 +13,12 @@ pub mod osa;
 mod tools;
 mod aarch;
 
-
-use dma_api::Direction;
 pub use iopad::*;
 pub use mci_host::*;
 
 pub trait Kernel {
     fn sleep(duration: Duration);
-    fn mmap(virt_addr: NonNull<u8>, size: usize, direction: Direction) -> u64;
+    fn mmap(virt_addr: NonNull<u8>) -> u64;
     fn flush(addr: NonNull<u8>, size: usize);
     fn invalidate(addr: core::ptr::NonNull<u8>, size: usize);
 }
@@ -35,12 +33,12 @@ pub(crate) fn sleep(duration: Duration) {
     }
 }
 
-pub(crate) fn mmap(virt_addr: NonNull<u8>, size: usize, direction: Direction) -> u64 {
+pub(crate) fn mmap(virt_addr: NonNull<u8>) -> u64 {
     extern "Rust" {
-        fn _phytium_mci_map(virt_addr: NonNull<u8>, size: usize, direction: Direction) -> u64;
+        fn _phytium_mci_map(virt_addr: NonNull<u8>) -> u64;
     }
 
-    unsafe { _phytium_mci_map(virt_addr, size, direction) }
+    unsafe { _phytium_mci_map(virt_addr) }
 }
 
 pub(crate) fn flush(addr: NonNull<u8>, size: usize) {
@@ -67,12 +65,8 @@ macro_rules! set_impl {
             <$t as $crate::Kernel>::sleep(duration)
         }
         #[no_mangle]
-        fn _phytium_mci_map(
-            addr: core::ptr::NonNull<u8>,
-            size: usize,
-            direction: dma_api::Direction,
-        ) -> u64 {
-            <$t as $crate::Kernel>::mmap(addr, size, direction)
+        fn _phytium_mci_map(addr: core::ptr::NonNull<u8>) -> u64 {
+            <$t as $crate::Kernel>::mmap(addr)
         }
         #[no_mangle]
         fn _phytium_mci_flush(addr: core::ptr::NonNull<u8>, size: usize) {

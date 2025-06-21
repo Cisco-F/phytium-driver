@@ -173,7 +173,7 @@ mod tests {
         fn sleep(duration: Duration) {
             sleep(duration);
         }
-        fn mmap(virt_addr: NonNull<u8>, _size: usize, _direction: dma_api::Direction) -> u64 {
+        fn mmap(virt_addr: NonNull<u8>) -> u64 {
             let vaddr = VirtAddr::from(virt_addr);
             let paddr = PhysAddr::from(vaddr);
             debug!("do mmap, va: {:x}, pa {:x}", virt_addr.as_ptr() as usize, paddr.as_usize());
