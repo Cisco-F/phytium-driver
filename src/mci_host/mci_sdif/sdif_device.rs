@@ -6,7 +6,6 @@ use core::ptr::NonNull;
 use core::time::Duration;
 
 use alloc::vec::Vec;
-use dma_api::DSlice;
 use log::*;
 
 use crate::aarch::dsb;
@@ -20,7 +19,7 @@ use crate::mci_host::MCIHostCardIntFn;
 use crate::osa::{osa_alloc_aligned, OSAEvent};
 use crate::osa::pool_buffer::PoolBuffer;
 use crate::sd::consts::SD_BLOCK_SIZE;
-use crate::{mmap, sleep, IoPad};
+use crate::{flush, mmap, sleep, IoPad};
 use crate::tools::swap_half_word_byte_sequence_u32;
 use super::consts::SDStatus;
 use super::MCIHost;
@@ -49,7 +48,12 @@ impl SDIFDev {
             }
             Ok(buffer) => buffer,
         };
-        warn!("rw_desc buffer at {:x}, pa {:x}", rw_desc.addr().as_ptr() as usize, mmap(rw_desc.addr(), length, dma_api::Direction::ToDevice));
+        debug!(
+            "rw_desc buffer at {:x}, pa {:x}", 
+            rw_desc.addr().as_ptr() as usize, 
+            mmap(rw_desc.addr(), length, 
+            dma_api::Direction::ToDevice)
+        );
 
         Self {
             hc: MCI::new(MCIConfig::new(addr)).into(),
@@ -396,16 +400,10 @@ impl SDIFDev {
             out_data.blkcnt_set(in_data.block_count());
             out_data.datalen_set(in_data.block_size() as u32 * in_data.block_count() );
 
-            warn!("buf va {:p}", buf.as_ptr());
-            let slice = DSlice::from(&buf[..]);
-            // let bus_addr = mmap(NonNull::new(buf.as_ptr() as *mut u8).unwrap().into(), buf.len() * size_of::<u32>(), dma_api::Direction::ToDevice);
-            out_data.buf_dma_set(slice.bus_addr() as usize);
-            warn!("in covert command info buf pa {:x}", slice.bus_addr());
-            drop(slice);
-
-            // let buf_ptr = unsafe { NonNull::new_unchecked(buf.as_ptr() as usize as *mut u32) };
-            // let bus_addr = map(buf_ptr.cast(), size_of_val(&buf[..]), Direction::Bidirectional);
-            // out_data.buf_dma_set(bus_addr as usize);
+            let bus_addr = mmap(NonNull::new(buf.as_ptr() as *mut u8).unwrap().into(), buf.len() * size_of::<u32>(), dma_api::Direction::ToDevice);
+            out_data.buf_dma_set(bus_addr as usize);
+            flush(NonNull::new(buf.as_ptr() as *mut u8).unwrap(), buf.len() * size_of::<u32>());
+            debug!("in covert command info, buf va {:p}, pa {:x}", buf.as_ptr(), bus_addr);
             out_data.buf_set(Some(buf));
 
             Some(out_data)

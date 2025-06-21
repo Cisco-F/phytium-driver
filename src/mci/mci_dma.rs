@@ -1,7 +1,6 @@
 use core::ptr::NonNull;
 
 use alloc::vec::Vec;
-use dma_api::DSlice;
 use log::*;
 
 use crate::flush;
@@ -154,14 +153,6 @@ impl MCI {
             }
         }
 
-        // todo 不太优雅 考虑后续修改
-        // let desc_vec = unsafe {
-        //     core::mem::ManuallyDrop::new(
-        //         Vec::from_raw_parts(desc_list.first_desc, desc_num as usize, desc_num as usize)
-        //     )
-        // };
-        // let _ = DSlice::from(&desc_vec[..]);
-        // unsafe { dsb(); }
         flush(NonNull::new(desc_list.first_desc).unwrap().cast(), desc_num as _);
         self.dump_dma_descriptor(desc_num);
         debug!("set dma desc ok");

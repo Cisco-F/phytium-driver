@@ -174,21 +174,9 @@ mod tests {
             sleep(duration);
         }
         fn mmap(virt_addr: NonNull<u8>, _size: usize, _direction: dma_api::Direction) -> u64 {
-            // let vaddr = VirtAddr::from(virt_addr);
-            // let paddr;
-            // if virt_addr.as_ptr() as usize <= 0xffffe000001df000 {
-            //     paddr = PhysAddr::new(vaddr.raw() - 0xffff_e000_0000_0000);
-            // } else if virt_addr.as_ptr() as usize >= 0xffffe10000000000 && virt_addr.as_ptr() as usize <= 0xffffe10000800000 {
-            //     paddr = PhysAddr::new(vaddr.raw() - 0xFFFF_FEFF_6FE2_1000);
-            // } else if virt_addr.as_ptr() as usize >= 0xfffff000909df000 && virt_addr.as_ptr() as usize <= 0xfffff000fc000000 {
-            //     paddr = PhysAddr::new(vaddr.raw() - 0xFFFF_F000_0000_0000);
-            // }
-            // else {
-            //     panic!("unsupported mmap at {:x}!", vaddr.raw());
-            // }
             let vaddr = VirtAddr::from(virt_addr);
             let paddr = PhysAddr::from(vaddr);
-            info!("virt_addr: {:x}, vaddr.raw: {:x}, pa {:x}", virt_addr.as_ptr() as usize, vaddr.as_usize(), paddr.as_usize());
+            debug!("do mmap, va: {:x}, pa {:x}", virt_addr.as_ptr() as usize, paddr.as_usize());
             paddr.as_usize() as _
         }
         fn flush(addr: NonNull<u8>, size: usize) {
