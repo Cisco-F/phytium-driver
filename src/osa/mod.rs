@@ -47,7 +47,7 @@ impl<'a> FMemp<'a> {
     unsafe fn alloc_aligned(&mut self, size: usize, align: usize) -> Result<PoolBuffer, FMempError> {
         let layout = Layout::from_size_align_unchecked(size, align);
         if let Some(result) = self.tlsf_ptr.allocate(layout) {
-            let buffer = PoolBuffer::new(size, result);
+            let buffer = PoolBuffer::new(size, result, align);
             Ok(buffer)
         } else {
             Err(FMempError::BadMalloc)

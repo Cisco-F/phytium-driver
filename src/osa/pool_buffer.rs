@@ -11,14 +11,16 @@ use super::{err::FMempError, osa_dealloc};
 pub struct PoolBuffer {
     size: usize,
     addr: NonNull<u8>,
+    align: usize
 }
 
 impl PoolBuffer {
     /// Construct a PoolBuffer
-    pub fn new(size: usize, addr: NonNull<u8>) -> Self {
+    pub fn new(size: usize, addr: NonNull<u8>, align: usize) -> Self {
         Self {
             size,
             addr,
+            align
         }
     }
 
@@ -73,7 +75,7 @@ impl PoolBuffer {
         Ok(slice.to_vec())
     }
 
-    /// Clear buffer, leaving 0s in original places
+    /// Clear buffer, leaving 0s at original places
     pub fn clear(&mut self) {
         unsafe { write_bytes(self.addr.as_ptr(), 0, self.size); }
     }
@@ -91,7 +93,7 @@ impl PoolBuffer {
 
 impl Drop for PoolBuffer {
     fn drop(&mut self) {
-        osa_dealloc(self.addr, self.size);
+        osa_dealloc(self.addr, self.align);
     }
 }
 

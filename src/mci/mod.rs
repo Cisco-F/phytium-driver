@@ -321,7 +321,8 @@ impl MCI {
             if delay % 1000 == 0 {
                 debug!("polling dma end, reg_val = 0x{:x}", reg_val);
             }
-            // todo relax handler? 
+            
+            Self::relax_handler();
 
             delay -= 1;
             if wait_bits & reg_val == wait_bits || delay == 0 {

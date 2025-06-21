@@ -20,7 +20,7 @@ use core::time::Duration;
 use crate::mci_host::mci_host_config::MCIHostType;
 use crate::mci_host::mci_sdif::sdif_device::SDIFDev;
 use crate::mci_host::MCIHost;
-use crate::osa::{osa_alloc_aligned, osa_init};
+use crate::osa::{osa_alloc_aligned, osa_dealloc, osa_init};
 use crate::{sleep, IoPad};
 use crate::tools::swap_word_byte_sequence_u32;
 
@@ -995,8 +995,10 @@ impl SdCard {
 
         data.block_size_set(64);
         data.block_count_set(1);
-        let tmp_buf = vec![0; 64];
-        data.rx_data_set(Some(tmp_buf)); //todo 似乎影响性能 DMA 似乎是最好不要往栈上读写的? 从内存池分配
+        // We implemented 'Drop' for PoolBuffer, so we don't need to dealloc this rx_buf
+        let rx_buf = osa_alloc_aligned(64 * size_of::<u32>(), size_of::<u32>()).unwrap();
+        warn!("CMD6: alloc rx_buf at {:p}, size {}", rx_buf.addr().as_ptr(), rx_buf.size());
+        data.rx_data_set(Some(rx_buf.to_vec::<u32>().unwrap()));
 
         let mut content = MCIHostTransfer::new();
 
@@ -1031,7 +1033,6 @@ impl SdCard {
         let host = self.base.host.as_ref().ok_or(MCIHostError::HostNotReady)?;
         host.card_select(self.base.relative_address, is_selected)
     }
-
 
     /// CMD 8 
     fn interface_condition_send(&mut self) -> MCIHostStatus {
@@ -1298,9 +1299,10 @@ impl SdCard {
         data.block_size_set(block_size as usize);
         data.block_count_set(block_count);
 
-        let len = block_size * block_count / 4;
-        let tmp_buf = vec![0; len as usize]; // todo 从内存池分配
-        data.rx_data_set(Some(tmp_buf));
+        let len = block_size * block_count;
+        let rx_buf = osa_alloc_aligned(len as usize, block_size as usize).unwrap();
+        warn!("CMD17/18: alloc rx_buf at {:p}, size {}", rx_buf.addr().as_ptr(), rx_buf.size());
+        data.rx_data_set(Some(rx_buf.to_vec::<u32>().unwrap()));
         data.enable_auto_command12_set(true);
 
 
@@ -1554,8 +1556,10 @@ impl SdCard {
 
         data.block_size_set(8);
         data.block_count_set(1);
-        let tmp_buf = vec![0; 8];
-        data.rx_data_set(Some(tmp_buf)); //todo 似乎影响性能 DMA 似乎是最好不要往栈上读写的?
+        // We implemented 'Drop' for PoolBuffer, so we don't need to dealloc this rx_buf
+        let rx_buf = osa_alloc_aligned(8 * size_of::<u32>(), size_of::<u32>()).unwrap();
+        warn!("ACMD 51: alloc rx_buf at {:p}, size {}", rx_buf.addr().as_ptr(), rx_buf.size());
+        data.rx_data_set(Some(rx_buf.to_vec::<u32>().unwrap()));
 
         let mut content = MCIHostTransfer::new();
         content.set_cmd(Some(command));
