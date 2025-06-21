@@ -451,12 +451,6 @@ impl MCI {
         Ok(())
     }
 
-    /* Read PIO data, it works in IRQ mode */ // todo 不知道协议栈层需要不需要调用,已经实现.
-    /* Get cmd response and received data after wait poll status or interrupt signal */ // todo 不知道协议栈层需要不需要调用,已经实现.
-
-    /* Interrupt handler for SDIF instance */ //todo 在中断模式下会使用到
-    /* Register event call-back function as handler for interrupt events */ //todo 在中断模式下会使用到
-
     /// Reset controller from error state 
     pub fn restart(&self) -> MCIResult {
 

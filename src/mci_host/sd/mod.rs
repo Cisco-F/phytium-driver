@@ -996,7 +996,7 @@ impl SdCard {
         data.block_size_set(64);
         data.block_count_set(1);
         let tmp_buf = vec![0; 64];
-        data.rx_data_set(Some(tmp_buf)); //todo 似乎影响性能 DMA 似乎是最好不要往栈上读写的?
+        data.rx_data_set(Some(tmp_buf)); //todo 似乎影响性能 DMA 似乎是最好不要往栈上读写的? 从内存池分配
 
         let mut content = MCIHostTransfer::new();
 
@@ -1299,7 +1299,7 @@ impl SdCard {
         data.block_count_set(block_count);
 
         let len = block_size * block_count / 4;
-        let tmp_buf = vec![0; len as usize];
+        let tmp_buf = vec![0; len as usize]; // todo 从内存池分配
         data.rx_data_set(Some(tmp_buf));
         data.enable_auto_command12_set(true);
 
@@ -1386,9 +1386,7 @@ impl SdCard {
         data.enable_auto_command12_set(false);
         data.block_size_set(block_size as usize);
         data.block_count_set(block_count);
-        // todo 减少内存开销
-        let tmp_buf = buffer.clone();
-        data.tx_data_set(Some(tmp_buf));
+        data.tx_data_set(Some(buffer.to_vec()));
 
         *written_blocks = block_count;
 
@@ -1588,7 +1586,6 @@ impl SdCard {
 
         let cid = &mut self.cid;
         // todo 可能存在性能问题
-        // let rawcid = u8_to_u32_slice(&self.base.internal_buffer);
         let rawcid = match self.base.internal_buffer.to_vec::<u32>() {
             Err(e) => {
                 error!("Construct Vec<u32> from internal_buffer failed! err: {:?}", e);

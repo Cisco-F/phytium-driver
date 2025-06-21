@@ -395,7 +395,7 @@ impl SDIFDev {
             
             out_data.blksz_set(in_data.block_size() as u32);
             out_data.blkcnt_set(in_data.block_count());
-            out_data.datalen_set(in_data.block_size() as u32 * in_data.block_count() );
+            out_data.datalen_set(in_data.block_size() as u32 * in_data.block_count());
 
             let bus_addr = mmap(NonNull::new(buf.as_ptr() as *mut u8).unwrap().into());
             out_data.buf_dma_set(bus_addr as usize);
