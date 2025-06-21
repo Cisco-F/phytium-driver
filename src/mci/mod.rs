@@ -160,15 +160,15 @@ impl MCI {
         }
 
         // todo 不太优雅 后续考虑修改
-        // let desc_vec = unsafe {
-        //     core::mem::ManuallyDrop::new(
-        //         Vec::from_raw_parts(desc.addr().as_ptr(), desc_num as usize, desc_num as usize)
-        //     )
-        // };
-        // let slice = DSlice::from(&desc_vec[..]); // 获取物理地址
-        let a = mmap(desc.addr(), desc.size(), dma_api::Direction::ToDevice);
-        // self.desc_list.first_desc_dma = slice.bus_addr() as usize;
-        self.desc_list.first_desc_dma = a as usize;
+        let desc_vec = unsafe {
+            core::mem::ManuallyDrop::new(
+                Vec::from_raw_parts(desc.addr().as_ptr(), desc_num as usize, desc_num as usize)
+            )
+        };
+        let slice = DSlice::from(&desc_vec[..]); // 获取物理地址
+        // let a = mmap(desc.addr(), desc.size(), dma_api::Direction::ToDevice);
+        self.desc_list.first_desc_dma = slice.bus_addr() as usize;
+        // self.desc_list.first_desc_dma = a as usize;
         self.desc_list.first_desc = desc.addr().as_ptr() as *mut FSdifIDmaDesc;
         self.desc_list.desc_num = desc_num;
         self.desc_list.desc_trans_sz = FSDIF_IDMAC_MAX_BUF_SIZE;
