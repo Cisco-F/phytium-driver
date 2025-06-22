@@ -20,7 +20,7 @@ mod tests {
     };
 
     const SD_START_BLOCK: u32 = 131072;
-    const SD_USE_BLOCK: u32 = 10;
+    const SD_USE_BLOCK: u32 = 4;
     const SD_BLOCK_SIZE: u32 = 512;
     const SD_MAX_RW_BLK: u32 = 1024;
 

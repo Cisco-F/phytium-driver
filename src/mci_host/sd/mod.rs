@@ -20,7 +20,8 @@ use core::time::Duration;
 use crate::mci_host::mci_host_config::MCIHostType;
 use crate::mci_host::mci_sdif::sdif_device::SDIFDev;
 use crate::mci_host::MCIHost;
-use crate::osa::{osa_alloc_aligned, osa_dealloc, osa_init};
+use crate::osa::pool_buffer::PoolBuffer;
+use crate::osa::osa_init;
 use crate::{sleep, IoPad};
 use crate::tools::swap_word_byte_sequence_u32;
 
@@ -65,14 +66,11 @@ impl SdCard {
         let mci_host_config = MCIHostConfig::new();
 
         // 组装 base
-        let internal_buffer = match osa_alloc_aligned(
-            mci_host_config.max_trans_size, 
+        let internal_buffer = match PoolBuffer::new(
+            mci_host_config.max_trans_size,
             mci_host_config.def_block_size
         ) {
-            Err(e) => {
-                error!("alloc internal buffer failed! err: {:?}", e);
-                panic!("Failed to allocate internal buffer");
-            }
+            Err(e) => panic!("Failed to allocate internal buffer, err: {:?}", e),
             Ok(buffer) => buffer,
         };
         let base = MCICardBase::from_buffer(internal_buffer);
@@ -996,8 +994,16 @@ impl SdCard {
         data.block_size_set(64);
         data.block_count_set(1);
         // We implemented 'Drop' for PoolBuffer, so we don't need to dealloc this rx_buf
-        let rx_buf = osa_alloc_aligned(64 * size_of::<u32>(), size_of::<u32>()).unwrap();
-        warn!("CMD6: alloc rx_buf at {:p}, size {}", rx_buf.addr().as_ptr(), rx_buf.size());
+        let rx_buf = match PoolBuffer::new(
+            64 * size_of::<u32>(), 
+            size_of::<u32>()
+        ) {
+            Err(e) => panic!("CMD6 allocate rx_buf failed, err {:?}", e),
+            Ok(buf) => {
+                warn!("CMD6: alloc rx_buf at {:p}, size {}", buf.addr().as_ptr(), buf.size());
+                buf
+            },
+        };
         data.rx_data_set(Some(rx_buf.to_vec::<u32>().unwrap()));
 
         let mut content = MCIHostTransfer::new();
@@ -1300,8 +1306,16 @@ impl SdCard {
         data.block_count_set(block_count);
 
         let len = block_size * block_count;
-        let rx_buf = osa_alloc_aligned(len as usize, block_size as usize).unwrap();
-        warn!("CMD17/18: alloc rx_buf at {:p}, size {}", rx_buf.addr().as_ptr(), rx_buf.size());
+        let rx_buf = match PoolBuffer::new(
+            len as usize, 
+            block_size as usize
+        ) {
+            Err(e) => panic!("CMD17/18 allocate rx_buf failed, err {:?}", e),
+            Ok(buf) => {
+                warn!("CMD17/18: alloc rx_buf at {:p}, size {}", buf.addr().as_ptr(), buf.size());
+                buf
+            },
+        };
         data.rx_data_set(Some(rx_buf.to_vec::<u32>().unwrap()));
         data.enable_auto_command12_set(true);
 
@@ -1557,8 +1571,16 @@ impl SdCard {
         data.block_size_set(8);
         data.block_count_set(1);
         // We implemented 'Drop' for PoolBuffer, so we don't need to dealloc this rx_buf
-        let rx_buf = osa_alloc_aligned(8 * size_of::<u32>(), size_of::<u32>()).unwrap();
-        warn!("ACMD 51: alloc rx_buf at {:p}, size {}", rx_buf.addr().as_ptr(), rx_buf.size());
+        let rx_buf = match PoolBuffer::new(
+            8 * size_of::<u32>(), 
+            size_of::<u32>()
+        ) {
+            Err(e) => panic!("ACMD51 allocate rx_buf failed, err {:?}", e),
+            Ok(buf) => {
+                warn!("ACMD51: alloc rx_buf at {:p}, size {}", buf.addr().as_ptr(), buf.size());
+                buf
+            },
+        };
         data.rx_data_set(Some(rx_buf.to_vec::<u32>().unwrap()));
 
         let mut content = MCIHostTransfer::new();

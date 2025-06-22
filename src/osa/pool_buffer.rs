@@ -5,7 +5,7 @@ use core::{ptr::{copy_nonoverlapping, write_bytes, NonNull}, slice::{from_raw_pa
 
 use alloc::vec::Vec;
 
-use super::{err::FMempError, osa_dealloc};
+use super::{err::FMempError, osa_alloc_aligned, osa_dealloc};
 
 /// PoolBuffer definition
 pub struct PoolBuffer {
@@ -15,13 +15,17 @@ pub struct PoolBuffer {
 }
 
 impl PoolBuffer {
-    /// Construct a PoolBuffer
-    pub fn new(size: usize, addr: NonNull<u8>, align: usize) -> Self {
-        Self {
+    /// Alloc a PoolBuffer
+    pub fn new(size: usize,  align: usize) -> Result<Self, &'static str> {
+        let ptr = match osa_alloc_aligned(size, align) {
+            Err(_) => return Err("osa alloc failed!"),
+            Ok(ptr) => ptr,
+        };
+        Ok(Self {
             size,
-            addr,
+            addr: ptr,
             align
-        }
+        })
     }
 
     /// Construct from &[T]

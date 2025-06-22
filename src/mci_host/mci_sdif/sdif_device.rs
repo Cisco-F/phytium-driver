@@ -16,7 +16,7 @@ use crate::mci_host::mci_host_card_detect::MCIHostCardDetect;
 use crate::mci_host::mci_host_config::*;
 use crate::mci_host::mci_host_transfer::MCIHostTransfer;
 use crate::mci_host::MCIHostCardIntFn;
-use crate::osa::{osa_alloc_aligned, OSAEvent};
+use crate::osa::OSAEvent;
 use crate::osa::pool_buffer::PoolBuffer;
 use crate::sd::consts::SD_BLOCK_SIZE;
 use crate::{flush, mmap, sleep, IoPad};
@@ -41,10 +41,9 @@ impl SDIFDev {
     pub fn new(addr: NonNull<u8>, desc_num: usize) -> Self {
         let align = SD_BLOCK_SIZE;
         let length = core::mem::size_of::<FSdifIDmaDesc>() * desc_num;
-        let rw_desc = match osa_alloc_aligned(length, align) {
+        let rw_desc = match PoolBuffer::new(length, align) {
             Err(e) => {
-                error!("alloc internal buffer failed! err: {:?}", e);
-                panic!("Failed to allocate internal buffer");
+                panic!("alloc internal buffer failed! err: {:?}", e);
             }
             Ok(buffer) => buffer,
         };
