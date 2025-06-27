@@ -54,6 +54,10 @@ impl MCIData {
         self.buf.as_mut()
     }
 
+    pub(crate) fn buf_take(&mut self) -> Option<Vec<u32>> {
+        self.buf.take()
+    }
+
     pub(crate) fn buf_set(&mut self,buf: Option<Vec<u32>>) {
         self.buf = buf
     }

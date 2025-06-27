@@ -445,13 +445,12 @@ impl SDIFDev {
 
         unsafe { dsb(); }
 
-        //TODO 这里的CLONE 会降低驱动速度,需要解决这个性能问题 可能Take出来直接用更好
         if let Some(_) = content.data() {
-            let data = cmd_data.get_data().unwrap();
+            let data = cmd_data.get_mut_data().unwrap();
             invalidate(NonNull::new(data.buf().unwrap().as_ptr() as *mut u8).unwrap(), data.buf().unwrap().len() * 4);
-            if let Some(rx_data) = data.buf() {
+            if let Some(rx_data) = data.buf_take() {
                 if let Some(in_data) = content.data_mut() {
-                    in_data.rx_data_set(Some(rx_data.clone()));
+                    in_data.rx_data_set(Some(rx_data));
                 }
             }
         }
