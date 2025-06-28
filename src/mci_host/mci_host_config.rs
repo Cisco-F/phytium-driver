@@ -38,7 +38,7 @@ impl MCIHostConfig {
             max_trans_size: SD_MAX_RW_BLK * SD_BLOCK_SIZE,
             def_block_size: SD_BLOCK_SIZE,
             card_clock: SD_CLOCK_50MHZ,
-            is_uhs_card: false, // todo 需要测试能不能支持UHS模式
+            is_uhs_card: false,
         };
 
         if cfg!(feature = "dma") {

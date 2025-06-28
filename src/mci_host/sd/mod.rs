@@ -171,8 +171,7 @@ impl SdCard {
     }
 
     fn sdmmc_config(&self) -> MCIHostStatus {
-        // todo
-        Ok(())
+        todo!("SDMMC mode not supported yet!");
     }
 
     fn from_base(base: MCICardBase) -> Self {
@@ -1343,9 +1342,7 @@ impl SdCard {
         let mut buffer = vec![0u32;64];
         let status = host.dev.execute_tuning(SdCmd::SendTuningBlock as u32, &mut buffer, 64);
 
-        // todo 性能问题
         self.base.internal_buffer.clear();
-        // self.base.internal_buffer.extend(buffer.iter().flat_map(|&val| val.to_ne_bytes()));
         let buffer = buffer.iter().flat_map(|&val| val.to_ne_bytes()).collect::<Vec<u8>>();
         if let Err(e) = self.base.internal_buffer.copy_from_slice(&buffer[..]) {
             error!("copy to PoolBuffer failed! err: {:?}", e);
@@ -1664,8 +1661,7 @@ impl SdCard {
     fn decode_cid(&mut self) {
 
         let cid = &mut self.cid;
-        // todo 可能存在性能问题
-        let rawcid = match self.base.internal_buffer.to_vec::<u32>() {
+        let rawcid = match self.base.internal_buffer.to_vec_in_len::<u32>(4) {
             Err(e) => {
                 error!("Construct Vec<u32> from internal_buffer failed! err: {:?}", e);
                 panic!();
@@ -1692,9 +1688,7 @@ impl SdCard {
     fn decode_csd(&mut self) {
 
         let csd = &mut self.csd;
-        // todo 可能存在性能问题
-        // let rawcsd = u8_to_u32_slice(&self.base.internal_buffer);
-        let rawcsd = match self.base.internal_buffer.to_vec::<u32>() {
+        let rawcsd = match self.base.internal_buffer.to_vec_in_len::<u32>(4) {
             Err(e) => {
                 error!("Construct Vec<u32> from internal_buffer failed! err: {:?}", e);
                 panic!();
