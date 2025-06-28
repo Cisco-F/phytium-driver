@@ -4,6 +4,7 @@
 use core::{ptr::{copy_nonoverlapping, write_bytes, NonNull}, slice::{from_raw_parts, from_raw_parts_mut}};
 
 use alloc::vec::Vec;
+use log::error;
 
 use super::{err::FMempError, osa_alloc_aligned, osa_dealloc};
 
@@ -15,8 +16,8 @@ pub struct PoolBuffer {
 }
 
 impl PoolBuffer {
-    /// Alloc a PoolBuffer
-    pub fn new(size: usize,  align: usize) -> Result<Self, &'static str> {
+    /// Alloc a PoolBuffer, where size is buffer size in bytes
+    pub fn new(size: usize, align: usize) -> Result<Self, &'static str> {
         let ptr = match osa_alloc_aligned(size, align) {
             Err(_) => return Err("osa alloc failed!"),
             Ok(ptr) => ptr,
@@ -60,6 +61,18 @@ impl PoolBuffer {
         }
     }
 
+    pub fn as_slice_in_len<T>(&self, len: usize) -> Result<&[T], FMempError> {
+        if len * size_of::<T>() > self.size {
+            error!("Acquiring length to big for this PoolBuffer");
+            return Err(FMempError::NotEnoughSpace);
+        }
+
+        unsafe {
+            let result = from_raw_parts(self.addr.as_ptr() as *const T, len);
+            Ok(result)
+        }
+    }
+
     /// Construct a &mut [T] from self
     pub fn as_slice_mut<T>(&self) -> Result<&[T], FMempError> {
         let size = size_of::<T>();
@@ -76,6 +89,11 @@ impl PoolBuffer {
     /// Construct a Vec<u32> from self
     pub fn to_vec<T: Clone>(&self) -> Result<Vec<T>, FMempError> {
         let slice = self.as_slice::<T>()?;
+        Ok(slice.to_vec())
+    }
+
+    pub fn to_vec_in_len<T: Clone>(&self, len: usize) -> Result<Vec<T>, FMempError> {
+        let slice = self.as_slice_in_len::<T>(len)?;
         Ok(slice.to_vec())
     }
 

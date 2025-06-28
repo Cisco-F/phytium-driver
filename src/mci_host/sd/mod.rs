@@ -568,6 +568,7 @@ impl SdCard{
         }
 
         if self.application_cmd_send(self.base.relative_address).is_err() {
+            error!("SD app command failed for CMD22");
             return Err(MCIHostError::SendApplicationCommandFailed);
         }
 
@@ -578,7 +579,7 @@ impl SdCard{
         let mut data = MCIHostData::new();
         data.block_size_set(4);
         data.block_count_set(1);
-        let tmp_buf = vec![0; 4];
+        let tmp_buf = vec![0; 4]; // todo 减少内存开销
         data.rx_data_set(Some(tmp_buf));
 
         let mut content = MCIHostTransfer::new();
@@ -1444,7 +1445,7 @@ impl SdCard {
         */
         /* Send ACMD6 to change bus width */
         if self.application_cmd_send(self.base.relative_address).is_err() {
-            info!("SD app command failed for ACMD6");
+            error!("SD app command failed for ACMD6");
             return Err(MCIHostError::SendApplicationCommandFailed);
         }
 
@@ -1486,7 +1487,59 @@ impl SdCard {
     /// ACMD 13 
     fn status_read(&mut self) -> MCIHostStatus {
 
-        // todo polling card status
+        let mut command = MCIHostCmd::new();
+
+        if Err(MCIHostError::CardStatusIdle) != self.polling_card_status_busy(SD_CARD_ACCESS_WAIT_IDLE_TIMEOUT) {
+            error!("card busy!");
+            return Err(MCIHostError::WaitWriteCompleteFailed);
+        }
+
+        if let Err(e) = self.application_cmd_send(self.base.relative_address) {
+            error!("SD app command failed for ACMD13, err: {:?}", e);
+            return Err(MCIHostError::SendApplicationCommandFailed);
+        }
+
+        command.index_set(SdAppCmd::Status as u32);
+        command.response_type_set(MCIHostResponseType::R1);
+
+        let mut data = MCIHostData::new();
+        data.block_size_set(64);
+        data.block_count_set(1);
+        let rx_buf = PoolBuffer::new(64, 64).unwrap();
+        data.rx_data_set(Some(rx_buf.to_vec::<u32>().unwrap())); // todo 减少内存分配
+
+        let mut content = MCIHostTransfer::new();
+        content.set_data(Some(data));
+        content.set_cmd(Some(command));
+
+        let host = self.base.host.as_ref().ok_or(MCIHostError::HostNotReady)?;
+        if let Err(e) = host.dev.transfer_function(&mut content, host) {
+            let command = content.cmd().unwrap();
+            let response = command.response();
+
+            info!("\r\nError: send ACMD13 failed with host error {:?}, response 0x{:x}\r\n"
+                ,e
+                ,response[0]);
+            return Err(MCIHostError::TransferFailed);
+        }
+
+        let command = content.cmd().unwrap();
+        let response = command.response();
+        if response[0] & MCIHostCardStatusFlag::ALL_ERROR_FLAG.bits() != 0 {
+            info!("\r\nError: send ACMD13 failed with response 0x{:x}\r\n", response[0]);
+            return Err(MCIHostError::TransferFailed);
+        }
+
+        let data = content.data_mut().unwrap();
+        let rx_data = data.rx_data_mut().unwrap();
+        let _ = host.dev.convert_data_to_little_endian(
+            rx_data, 
+            16, 
+            MCIHostDataPacketFormat::MSBFirst,
+            host
+        );
+
+        self.decode_status(rx_data);
 
         Ok(())
     }
@@ -1789,6 +1842,21 @@ impl SdCard {
             info!("   Card support set block count command");
             self.flags |= SdCardFlag::SupportSetBlockCountCmd;
         }
+    }
+
+    fn decode_status(&mut self, status: &Vec<u32>) {
+        self.stat.bus_width         = ((status[0] & 0xC0000000) >> 30) as u8;                                       /* 511-510 */
+        self.stat.secure_mode       = ((status[0] & 0x20000000) >> 29) as u8;                                       /* 509 */
+        self.stat.card_type         = (status[0] & 0x0000FFFF) as u16;                                              /* 495-480 */
+        self.stat.protected_size    = status[1];                                                                    /* 479-448 */
+        self.stat.speed_class       = ((status[2] & 0xFF000000) >> 24) as u8;                                       /* 447-440 */
+        self.stat.performance_move  = ((status[2] & 0x00FF0000) >> 16) as u8;                                       /* 439-432 */
+        self.stat.au_size           = ((status[2] & 0x0000F000) >> 12) as u8;                                       /* 431-428 */
+        self.stat.erase_size        = (((status[2] & 0x000000FF) << 8) | ((status[3] & 0xFF000000) >> 24)) as u16;  /* 423-408 */
+        self.stat.erase_timeout     = ((((status[3] & 0x00FF0000) >> 16)) as u8 & 0xFC) >> 2;                       /* 407-402 */
+        self.stat.erase_offset      = (((status[3] & 0x00FF0000) >> 16)) as u8 & 0x3;                               /* 401-400 */
+        self.stat.uhs_speed_grade   = ((((status[3] & 0x0000FF00) >> 8)) as u8 & 0xF0) >> 4;                        /* 399-396 */
+        self.stat.uhs_au_size       = (((status[3] & 0x0000FF00) >> 8)) as u8 & 0xF;                                /* 395-392 */
     }
 }
 

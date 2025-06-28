@@ -40,8 +40,8 @@ pub(crate) struct SDIFDev {
 impl SDIFDev {
     pub fn new(addr: NonNull<u8>, desc_num: usize) -> Self {
         let align = SD_BLOCK_SIZE;
-        let length = core::mem::size_of::<FSdifIDmaDesc>() * desc_num;
-        let rw_desc = match PoolBuffer::new(length, align) {
+        let size = core::mem::size_of::<FSdifIDmaDesc>() * desc_num;
+        let rw_desc = match PoolBuffer::new(size, align) {
             Err(e) => {
                 panic!("alloc internal buffer failed! err: {:?}", e);
             }
