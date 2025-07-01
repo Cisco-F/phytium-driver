@@ -30,10 +30,15 @@ use crate::mci_host::sd::consts::SdCmd;
 use crate::mci::mci_dma::FSdifIDmaDesc;
 
 pub(crate) struct SDIFDev {
-    hc: RefCell<MCI>,                           // SDIF 硬件控制器
-    hc_cfg: RefCell<MCIConfig>,                 // SDIF 配置
-    rw_desc: PoolBuffer,                        // DMA 描述符指针，用于管理数据传输
-    desc_num: Cell<u32>,                        // 描述符数量，表示 DMA 描述符的数量
+    /// SDIF 硬件控制器
+    hc: RefCell<MCI>,
+    /// SDIF 配置
+    hc_cfg: RefCell<MCIConfig>,
+    /// DMA 描述符指针，用于管理数据传输
+    rw_desc: PoolBuffer,
+    /// 描述符数量，表示 DMA 描述符的数量
+    desc_num: Cell<u32>,
+    /// 记录信号量，用于中断处理中的线程同步
     hc_evt: RefCell<OSAEvent>,
 }
 
@@ -112,31 +117,10 @@ impl SDIFDev {
     }
 
     fn deinit(&self) {
-        // todo FSDIFHOST_RevokeIrq
         let _ = self.hc.borrow_mut().config_deinit();
         info!("Sdio ctrl deinited !!!")
     }
 
-    // fn setup_irq(&mut self) -> MCIHostStatus {
-    //     let irq_num = self.hc_cfg.get_mut().irq_num();
-    //     IrqParam {
-    //         intc: 0.into(),
-    //         cfg: IrqConfig {
-    //             irq: (irq_num as usize).into(),
-    //             trigger: Trigger::LevelHigh,
-    //         }
-    //     }
-    //     .register_builder({
-    //         move |_irq| {
-    //             self.fsdif_interrupt_handler();
-    //             IrqHandleResult::Handled
-    //         }
-    //     })
-    //     .register();
-
-    //     Ok(())
-    // }
-    
     pub fn reset(&self) -> MCIHostStatus {
         match self.hc.borrow_mut().restart() {
             Ok(_) => Ok(()),
@@ -172,8 +156,8 @@ impl SDIFDev {
         Ok(())
     }
 
-    fn enable_ddr_mode(&self, _enable: bool, _nibble_pos: u32) {
-        // todo  暂时还没有实现
+    fn enable_ddr_mode(&self, enable: bool, _nibble_pos: u32) {
+        self.hc.borrow().set_ddr_mode(enable);
     }
 
     fn enable_hs400_mode(&self, _enable: bool) {
@@ -526,13 +510,12 @@ impl SDIFDev {
         //     return Err(MCIHostError::Timeout);
         // }
 
-        //TODO 这里的CLONE 会降低驱动速度,需要解决这个性能问题 可能Take出来直接用更好
         if let Some(_) = content.data() {
-            let data = cmd_data.get_data().unwrap();
-            unsafe { invalidate(data.buf().unwrap().as_ptr() as *const u8, data.buf().unwrap().len() * 4); }
-            if let Some(rx_data) = data.buf() {
+            let data = cmd_data.get_mut_data().unwrap();
+            invalidate(NonNull::new(data.buf().unwrap().as_ptr() as *mut u8).unwrap(), data.buf().unwrap().len() * 4);
+            if let Some(rx_data) = data.buf_take() {
                 if let Some(in_data) = content.data_mut() {
-                    in_data.rx_data_set(Some(rx_data.clone()));
+                    in_data.rx_data_set(Some(rx_data));
                 }
             }
         }

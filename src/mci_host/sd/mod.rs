@@ -264,7 +264,7 @@ impl SdCard{
         * Request new relative card address. This moves the card from
         * identification mode to data transfer mode
         */
-        if self.rca_send().is_err() { /* CMD3 */
+        if self.rca_send().is_err() { /* ACMD3 */
             return Err(MCIHostError::SendRelativeAddressFailed);
         }
 
@@ -578,8 +578,8 @@ impl SdCard{
         let mut data = MCIHostData::new();
         data.block_size_set(4);
         data.block_count_set(1);
-        let tmp_buf = vec![0; 4]; // todo 减少内存开销
-        data.rx_data_set(Some(tmp_buf));
+        let rx_buf = vec![0; 4];
+        data.rx_data_set(Some(rx_buf));
 
         let mut content = MCIHostTransfer::new();
         content.set_cmd(Some(command));
@@ -792,7 +792,6 @@ impl SdCard{
         let mut block_count_one_time:u32;
 
         while block_left != 0 {
-            // todo如果修正当前的性能问题,则需要考虑对齐问题
             let host = self.base.host.as_ref().ok_or(MCIHostError::HostNotReady)?;
             if block_left > host.max_block_count.get() {
                 block_left -= host.max_block_count.get();
@@ -802,6 +801,11 @@ impl SdCard{
                 block_left = 0;
             }
 
+            /*
+             * todo 此处申请once_buffer，在数据量较大的情况下可能会带来不小的性能开销
+             * 但Rust并不能像C语言一样那么灵活的使用指针，否则可能会带来大量unsafe代码
+             * 这里折中使用申请内存+extend的方法来处理数据
+             */
             let len = block_count_one_time * MCI_HOST_DEFAULT_BLOCK_SIZE / 4;
             let mut once_buffer = vec![0u32; len as usize];
             if self.read(&mut once_buffer, 
@@ -847,6 +851,61 @@ impl SdCard{
             }
 
             block_left -= block_count_one_time;
+        }
+
+        Ok(())
+    }
+
+    fn erase(&mut self, start_block: u32, block_count: u32) -> MCIHostStatus {
+        let mut erase_block_start =  start_block;
+        let mut erase_block_end = erase_block_start + block_count - 1;
+
+        if Err(MCIHostError::CardStatusIdle) != self.polling_card_status_busy(SD_CARD_ACCESS_WAIT_IDLE_TIMEOUT) {
+            error!("Error: write failed, card status busy");
+            return Err(MCIHostError::TransferFailed);
+        }
+
+        if !self.flags.contains(SdCardFlag::SupportHighCapacity) {
+            erase_block_start = erase_block_start * MCI_HOST_DEFAULT_BLOCK_SIZE;
+            erase_block_end = erase_block_end * MCI_HOST_DEFAULT_BLOCK_SIZE;
+        }
+
+        // Send ERASE_WRITE_BLOCK_START command to set the start block number to erase
+        let mut command = MCIHostCmd::new();
+        command.index_set(SdCmd::EraseWriteBlockStart as u32);
+        command.argument_set(erase_block_start);
+        command.response_type_set(MCIHostResponseType::R1);
+        command.response_error_flags_set(MCIHostCardStatusFlag::ALL_ERROR_FLAG);
+
+        let mut content = MCIHostTransfer::new();
+        content.set_cmd(Some(command));
+        if let Err(e) = self.transfer(&mut content, 1) {
+            error!("Error: send CMD32 failed with host error {:?}", e);
+            return Err(MCIHostError::TransferFailed);
+        }
+
+        // Send ERASE_WRITE_BLOCK_END command to set the end block number to erase
+        let mut command = MCIHostCmd::new();
+        command.index_set(SdCmd::EraseWriteBlockEnd as u32);
+        command.argument_set(erase_block_end);
+
+        content.set_cmd(Some(command));
+        if let Err(e) = self.transfer(&mut content, 0) {
+            error!("Error: send CMD33 failed with host error {:?}", e);
+            return Err(MCIHostError::TransferFailed);
+        }
+
+        // Send ERASE command to start erase process
+        let mut command = MCIHostCmd::new();
+        command.index_set(MCIHostCommonCmd::Erase as u32);
+        command.argument_set(0);
+        command.response_type_set(MCIHostResponseType::R1b);
+        command.response_error_flags_set(MCIHostCardStatusFlag::ALL_ERROR_FLAG);
+
+        content.set_cmd(Some(command));
+        if let Err(e) = self.transfer(&mut content, 0) {
+            error!("Error: send CMD38 failed with host error {:?}", e);
+            return Err(MCIHostError::TransferFailed);
         }
 
         Ok(())
@@ -937,39 +996,6 @@ impl SdCard {
         }
 
         self.decode_cid();
-
-        Ok(())
-    }
-
-    /// CMD 3 
-    fn rca_send(&mut self) -> MCIHostStatus {
-        let host = self.base.host.as_ref().ok_or(MCIHostError::HostNotReady)?;
-        
-        let mut command = MCIHostCmd::new();
-
-        command.index_set(SdCmd::SendRelativeAddress as u32);
-        command.argument_set(0);
-        command.response_type_set(MCIHostResponseType::R6);
-
-        let mut content = MCIHostTransfer::new();
-        content.set_cmd(Some(command));
-
-        if let Err(err) = host.dev.transfer_function(&mut content,host){
-            let command = content.cmd().unwrap();
-            let response = command.response();
-
-            info!("\r\nError: send CMD3 failed with host error {:?}, response 0x{:x}\r\n"
-                ,err
-                ,response[0]);
-
-            return Err(err);
-        }else {
-
-            let command = content.cmd().unwrap();
-            let response = command.response();
-
-            self.base.relative_address = response[0] >> 16;
-        }
 
         Ok(())
     }
@@ -1432,6 +1458,39 @@ impl SdCard {
 }
 
 impl SdCard {
+
+    /// ACMD 3 
+    fn rca_send(&mut self) -> MCIHostStatus {
+        let host = self.base.host.as_ref().ok_or(MCIHostError::HostNotReady)?;
+        
+        let mut command = MCIHostCmd::new();
+
+        command.index_set(SdCmd::SendRelativeAddress as u32);
+        command.argument_set(0);
+        command.response_type_set(MCIHostResponseType::R6);
+
+        let mut content = MCIHostTransfer::new();
+        content.set_cmd(Some(command));
+
+        if let Err(err) = host.dev.transfer_function(&mut content,host){
+            let command = content.cmd().unwrap();
+            let response = command.response();
+
+            info!("\r\nError: send CMD3 failed with host error {:?}, response 0x{:x}\r\n"
+                ,err
+                ,response[0]);
+
+            return Err(err);
+        }else {
+
+            let command = content.cmd().unwrap();
+            let response = command.response();
+
+            self.base.relative_address = response[0] >> 16;
+        }
+
+        Ok(())
+    }
 
     /// ACMD 6 
     fn data_bus_width_set(&mut self,width: MCIHostBusWdith) -> MCIHostStatus {

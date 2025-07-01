@@ -36,7 +36,7 @@ pub struct MCI {
     config: MCIConfig,
     is_ready: bool,
     desc_list: FSdifIDmaDescList,
-    prev_cmd: u32, // todo 这里需要实现成一个实现了Command的enum
+    prev_cmd: u32,
     cur_cmd: Option<MCICmdData>,
     curr_timing: MCITiming,
     io_pad: Option<IoPad>,

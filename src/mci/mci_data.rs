@@ -2,7 +2,8 @@ use alloc::vec::Vec;
 
 #[derive(Debug,Clone)]
 pub(crate) struct MCIData {
-    //TODO 使用智能指针会不会影响性能?
+    // todo 使用智能指针涉及到大量的细微调整和代码修改，且十分容易造成潜在的非法的地址访问
+    // 暂时不考虑仿照源码使用指针来表示这里的buf
     buf: Option<Vec<u32>>,
     buf_dma: usize,
     blksz: u32,

@@ -118,12 +118,13 @@ pub fn fsdif_interrupt_handler() {
         cmd_done();
         data_done(events.bits(), dmac_events.bits());
     } 
-    // else if events.contains(MCIRawInts::CMD_BIT) ||
-    //     (events.contains(MCIRawInts::HTO_BIT) && self.cur_cmd_index() == MCI::SWITCH_VOLTAGE as isize) 
-    // {
-    //     warn!("cmd over!");
-    //     cmd_done();
-    // }
+    else if events.contains(MCIRawInts::CMD_BIT)
+        // todo 这里无法得到MCI实例 暂时无法处理这种情况
+        // (events.contains(MCIRawInts::HTO_BIT) && self.cur_cmd_index() == MCI::SWITCH_VOLTAGE as isize) 
+    {
+        warn!("cmd over!");
+        cmd_done();
+    }
     else if events.contains(MCIRawInts::CMD_BIT) { // handle cmd done
         warn!("cmd over!");
         cmd_done();
@@ -155,6 +156,7 @@ pub fn data_done(status: u32, dmac_status: u32) {
     ).bits();
     let check_dmac = dmac_status & (MCIDMACIntEn::AIS | MCIDMACIntEn::DU).bits();
 
+    // todo 这里无法得到MCI实例 暂时无法处理这种情况
     // if !dev.whether_transfer_data() {
     //     osa_event_set(SDMMC_OSA_EVENT_TRANSFER_DATA_SUCCESS);
     // } else if check_status | check_dmac != 0 {

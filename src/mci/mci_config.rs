@@ -30,8 +30,6 @@ impl MCIConfig {
             config.trans_mode = MCITransMode::PIO;
         }
 
-        // config.clear_irq();
-
         config
     }
 

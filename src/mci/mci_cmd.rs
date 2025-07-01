@@ -1,12 +1,7 @@
 use core::sync::atomic::compiler_fence;
 use core::sync::atomic::Ordering;
 
-// use bare_test::driver::intc::IrqConfig;
-// use bare_test::driver::intc::Trigger;
-// use bare_test::irq::unregister_irq;
-// use bare_test::irq::IrqParam;
 use log::*;
-
 use crate::aarch::dsb;
 
 use super::mci_cmddata::MCICmdData;
