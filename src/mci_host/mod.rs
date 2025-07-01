@@ -2,7 +2,6 @@
 
 mod constants;
 mod mci_host_config;
-mod mci_host_device;
 mod mci_host_transfer;
 pub mod mci_sdif;
 mod err;
@@ -16,17 +15,16 @@ use alloc::{boxed::Box, rc::Rc};
 
 use constants::*;
 use err::{MCIHostError, MCIHostStatus};
-use log::error;
 use mci_host_card_detect::MCIHostCardDetect;
 use mci_host_config::MCIHostConfig;
-use mci_host_device::MCIHostDevice;
 use mci_host_transfer::{MCIHostCmd, MCIHostTransfer};
+use mci_sdif::sdif_device::SDIFDev;
 
 type MCIHostCardIntFn = fn();
 
 #[allow(unused)]
 pub struct MCIHost {
-    pub(crate) dev: Box<dyn MCIHostDevice>,
+    pub(crate) dev: Box<SDIFDev>,
     pub(crate) config: MCIHostConfig,                  
     pub(crate) curr_voltage: Cell<MCIHostOperationVoltage>,  
     pub(crate) curr_bus_width: u32,                    
@@ -41,13 +39,12 @@ pub struct MCIHost {
     pub(crate) cd: Option<Rc<MCIHostCardDetect>>,         // 卡检测
     pub(crate) card_int: MCIHostCardIntFn,
 
-    //? 这里 uint8_t tuningType sdmmc_osa_event_t hostEvent sdmmc_osa_mutex_t lock 都没有移植
+    //todo uint8_t tuningType 没有移植
 }
 
 #[allow(unused)]
 impl MCIHost {
-
-    pub(crate) fn new(dev: Box<dyn MCIHostDevice>, config: MCIHostConfig) -> Self {
+    pub(crate) fn new(dev: Box<SDIFDev>, config: MCIHostConfig) -> Self {
         MCIHost {
             dev,
             config,
@@ -140,7 +137,6 @@ impl MCIHost {
     }
 
     pub(crate) fn go_idle(&self) -> MCIHostStatus {
-        error!("cmd0 starts");
         let mut command = MCIHostCmd::new();
     
         command.index_set(MCIHostCommonCmd::GoIdleState as u32);
@@ -201,11 +197,5 @@ impl MCIHost {
     pub(crate) fn init(&mut self, addr: NonNull<u8>) -> MCIHostStatus {
         self.dev.init(addr,self)
     }
+
 }
-
-#[allow(unused)]
-impl MCIHost {
-    // todo 将 dev 的操作套壳
-}
-
-

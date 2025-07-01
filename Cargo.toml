@@ -6,7 +6,6 @@ edition = "2021"
 [dependencies]
 tock-registers = "0.9.0"
 log = "0.4"
-dma-api = { version = "0.2", features = ["alloc"] }
 nb = "1.1"
 bitflags = "2.8"
 bytemuck = "1.22.0"
@@ -24,9 +23,11 @@ spin_on = "0.1.1"
 bare-test-macros = "0.2"
 
 [features]
-default = ["dma"]
+default = ["dma", "poll"]
 dma = []
 pio = []
+poll = []
+irq = []
 
 [[test]]
 name = "test"

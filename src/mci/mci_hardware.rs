@@ -1,7 +1,7 @@
 use super::MCI;
 
 use super::err::*;
-use super::constants::*;
+use super::consts::*;
 use super::regs::*;
 
 use log::*;
@@ -99,7 +99,6 @@ impl MCI {
         }
 
         /* update clock after reset */
-        self.private_cmd_send(MCICmd::UPD_CLK, 0)?;
         if let Err(e) = self.private_cmd_send(MCICmd::UPD_CLK, 0) {
             error!("Update clock failed!");
             return Err(e);
@@ -154,6 +153,23 @@ impl MCI {
     pub(crate) fn idma_reset(&self) {
         let reg = self.config.reg();
         reg.set_reg(MCIBusMode::SWR); /* 写1软复位idma，复位完成后硬件自动清0 */
+    }
+
+    pub(crate) fn set_ddr_mode(&self, enable: bool) {
+        let reg = self.config. reg();
+        let mut uhs_val = reg.read_reg::<MCIUhsReg>();
+        let mut emmc_val = reg.read_reg::<MCIEmmcDdrReg>();
+
+        if enable {
+            uhs_val.insert(MCIUhsReg::DDR);
+            emmc_val.insert(MCIEmmcDdrReg::CYCLE);
+        } else {
+            uhs_val.remove(MCIUhsReg::DDR);
+            emmc_val.remove(MCIEmmcDdrReg::CYCLE);
+        }
+
+        reg.write_reg(uhs_val);
+        reg.write_reg(emmc_val);
     }
 
     pub(crate) fn raw_status_get(&self) -> MCIRawInts {
