@@ -1,11 +1,15 @@
-use core::arch::asm;
-
 use bitflags::bitflags;
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum MCIId {
     MCI0,
     MCI1,
+}
+
+impl Default for MCIId {
+    fn default() -> Self {
+        Self::MCI0
+    }
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -50,8 +54,8 @@ pub enum MCIIntrType {
 }
 
 // 定义事件类型枚举
-#[derive(Debug, PartialEq)]
-pub enum FsDifEvtType {
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum FSdifEvtType {
     CardDetected = 0,  // 卡检测事件
     CmdDone,           // 命令传输完成事件
     DataDone,          // 包含数据的命令传输完成事件
@@ -85,34 +89,6 @@ impl From<u32> for MCIClkSpeed {
             _ => panic!("Invalid clock speed"),
         }
     }
-}
-
-#[inline(always)]
-pub unsafe fn dsb() {
-    core::arch::asm!("dsb sy");
-    core::arch::asm!("isb sy");
-}
-
-#[inline(always)]
-pub unsafe fn flush(addr: *const u8, size: usize) {
-    let mut addr = addr as usize;
-    let end = addr + size;
-    while addr < end {
-        asm!("dc civac, {0}", in(reg) addr, options(nostack, preserves_flags));
-        addr += 64;
-    }
-    dsb();
-}
-
-#[inline(always)]
-pub unsafe fn invalidate(addr: *const u8, size: usize) {
-    let mut addr = addr as usize;
-    let end = addr + size;
-    while addr < end {
-        asm!("dc ivac, {0}", in(reg) addr, options(nostack, preserves_flags));
-        addr += core::mem::size_of::<u32>();
-    }
-    asm!("dsb sy");
 }
 
 /** @name Register Map
@@ -166,6 +142,7 @@ pub const FSDIF_ENABLE_SHIFT_OFFSET: u32 = 0x110; // the enable phase shift reg
 pub const FSDIF_DATA_OFFSET: u32 = 0x200; // the data FIFO access
 
 pub const RETRIES_TIMEOUT:usize = 50000; /* timeout for retries */
+pub const COMMAND_TIMEOUT: u32 = 5000;
 pub const FSDIF_DELAY_US:u32 = 5;
 pub const MCI_MAX_FIFO_CNT:u32 = 0x800;
 
@@ -185,3 +162,9 @@ pub const FSDIF_IDMAC_DES0_ER: u32 = 1 << 5;     /* 链表已经到达最后一�
 pub const FSDIF_IDMAC_DES0_CES: u32 = 1 << 30;   /* RINTSTS寄存器错误汇总 */
 pub const FSDIF_IDMAC_DES0_OWN: u32 = 1 << 31;   /* 描述符关联DMA，完成传输后该位置置0 */
 pub const FSDIF_IDMAC_MAX_BUF_SIZE: u32 = 0x1000; // 每个desc在chained mode最多传输的字节数
+
+// 中断相关
+/// 中断事件数
+pub const FSDIF_NUM_OF_EVT: usize = 5;
+/// 中断event_handler用到的一个寄存器，作用未知
+pub const TEMP_REGISTER_OFFSET: u32 = 0xFD0;

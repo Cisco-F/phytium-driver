@@ -4,7 +4,7 @@ compile_error!("can't enable feature dma and pio at the same time!");
 use core::ptr::NonNull;
 
 use super::mci_timing::*;
-use super::constants::*;
+use super::consts::*;
 use super::regs::*;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -17,26 +17,27 @@ pub struct MCIConfig {
 }
 
 impl MCIConfig {
-    #[cfg(feature="dma")]
     pub fn new(addr: NonNull<u8>) -> Self {
-        Self {
-            instance_id: MCIId::MCI1,
-            reg: MCIReg::new(addr),
-            irq_num: 105,
-            trans_mode: MCITransMode::DMA,
-            non_removable: false,
-        }
-    }
-
-    #[cfg(feature="pio")]
-    pub fn new(addr: NonNull<u8>) -> Self {
-        Self {
+        let mut config = Self {
             instance_id: MCIId::MCI0,
             reg: MCIReg::new(addr),
-            irq_num: 104,
-            trans_mode: MCITransMode::PIO,
+            irq_num: 72,
+            trans_mode: MCITransMode::DMA,
             non_removable: false,
+        };
+        
+        if cfg!(feature="pio") {
+            config.trans_mode = MCITransMode::PIO;
         }
+
+        config
+    }
+
+    fn clear_irq(&self) {
+        let raw_ints = self.reg.read_reg::<MCIRawInts>();
+        let dmac_status = self.reg.read_reg::<MCIDMACStatus>();
+        self.reg.write_reg(raw_ints);
+        self.reg.write_reg(dmac_status);
     }
 
     /* Get the device instance default configure  */
@@ -82,5 +83,9 @@ impl MCIConfig {
 
     pub fn instance_id(&self) -> MCIId {
         self.instance_id
+    }
+
+    pub fn irq_num(&self) -> u32 {
+        self.irq_num
     }
 }

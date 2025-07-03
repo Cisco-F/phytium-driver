@@ -2,7 +2,7 @@ use log::*;
 use super::mci_data::MCIData;
 use super::MCI;
 use super::err::*;
-use super::constants::*;
+use super::consts::*;
 use super::regs::*;
 
 impl MCI {

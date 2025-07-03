@@ -1,9 +1,13 @@
+use core::sync::atomic::compiler_fence;
+use core::sync::atomic::Ordering;
+
 use log::*;
+use crate::aarch::dsb;
 
 use super::mci_cmddata::MCICmdData;
 use super::MCI;
 use super::err::*;
-use super::constants::*;
+use super::consts::*;
 use super::regs::*;
 
 impl MCI {
@@ -18,12 +22,12 @@ impl MCI {
         unsafe { dsb() };/* drain writebuffer */
 
         let cmd_reg = MCICmd::START | cmd;
-        
         reg.write_reg(cmd_reg);
+
         reg.retry_for(|reg:MCICmd|{
             !reg.contains(MCICmd::START)
         }, Some(RETRIES_TIMEOUT))?;
-
+        
         Ok(())
     }
 

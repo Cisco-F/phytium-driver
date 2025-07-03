@@ -1,5 +1,6 @@
 //! 注意不应把重名的子模块设为pub
-pub mod constants;
+#![allow(unused)]
+pub mod consts;
 pub mod regs;
 mod err;
 
@@ -14,9 +15,8 @@ mod mci_pio;
 pub mod mci_dma;
 
 use alloc::vec::Vec;
-use dma_api::DSlice;
 use err::*;
-use constants::*;
+use consts::*;
 use mci_dma::{FSdifIDmaDescList, FSdifIDmaDesc};
 use regs::*;
 use log::*;
@@ -24,22 +24,26 @@ use log::*;
 pub use mci_cmddata::*;
 pub use mci_config::*;
 pub use mci_timing::*;
+pub use mci_intr::fsdif_interrupt_handler;
+pub use mci_intr::register_dump;
 
-use crate::{osa::pool_buffer::PoolBuffer, regs::*, sleep, IoPad};
-use core::time::Duration;
+use crate::flush;
+use crate::mmap;
+use crate::{aarch::dsb, osa::pool_buffer::PoolBuffer, regs::*, sleep, IoPad};
+use core::{ptr::NonNull, time::Duration};
 
 pub struct MCI {
     config: MCIConfig,
     is_ready: bool,
-    prev_cmd: u32, // todo 这里需要实现成一个实现了Command的enum
-    curr_timing: MCITiming,
-    cur_cmd: Option<MCICmdData>,
-    io_pad: Option<IoPad>,
     desc_list: FSdifIDmaDescList,
+    prev_cmd: u32,
+    cur_cmd: Option<MCICmdData>,
+    curr_timing: MCITiming,
+    io_pad: Option<IoPad>,
 }
 
 impl MCI {
-    const SWITCH_VOLTAGE: u32 = 11;
+    pub const SWITCH_VOLTAGE: u32 = 11;
     const EXT_APP_CMD: u32 = 55;
     
     pub(crate) fn relax_handler() {
@@ -67,6 +71,28 @@ impl MCI {
             cur_cmd: None,
             io_pad: None,
             desc_list: FSdifIDmaDescList::new(),
+        }
+    }
+
+    pub(crate) fn config(&self) -> &MCIConfig {
+        &self.config
+    }
+
+    pub(crate) fn cur_cmd(&self) -> Option<&MCICmdData> {
+        self.cur_cmd.as_ref()
+    }
+
+    pub(crate) fn cur_cmd_index(&self) -> isize {
+        match self.cur_cmd() {
+            Some(cmd) => cmd.cmdidx() as isize,
+            None => -1,
+        }
+    }
+
+    pub(crate) fn cur_cmd_arg(&self) -> isize {
+        match self.cur_cmd() {
+            Some(cmd) => cmd.cmdarg() as isize,
+            None => -1,
         }
     }
 }
@@ -133,14 +159,8 @@ impl MCI {
             return Err(MCIError::InvalidState);
         }
 
-        // todo 不太优雅 后续考虑修改
-        let desc_vec = unsafe {
-            core::mem::ManuallyDrop::new(
-                Vec::from_raw_parts(desc.addr().as_ptr(), desc_num as usize, desc_num as usize)
-            )
-        };
-        let slice = DSlice::from(&desc_vec[..]); // 获取物理地址
-        self.desc_list.first_desc_dma = slice.bus_addr() as usize;
+        let bus_addr = mmap(desc.addr());
+        self.desc_list.first_desc_dma = bus_addr as usize;
         self.desc_list.first_desc = desc.addr().as_ptr() as *mut FSdifIDmaDesc;
         self.desc_list.desc_num = desc_num;
         self.desc_list.desc_trans_sz = FSDIF_IDMAC_MAX_BUF_SIZE;
@@ -185,6 +205,7 @@ impl MCI {
                 if cur_cmd_index == Self::SWITCH_VOLTAGE as u32 {
                     self.private_cmd11_send(reg_val | cmd_reg)
                 } else {
+                    info!("updating clock, reg_val 0x{:x}", reg_val.bits());
                     self.private_cmd_send(reg_val, 0)
                 }{
                 error!("update ext clock failed !!!");
@@ -202,9 +223,11 @@ impl MCI {
             self.clock_set(true);
 
             /* update clock for clock divider */
+            
             if cur_cmd_index == Self::SWITCH_VOLTAGE as u32 {
                 self.private_cmd11_send(reg_val | cmd_reg)?;
             } else {
+                info!("updating clock for clock divider, reg_val 0x{:x}", reg_val.bits());
                 self.private_cmd_send(reg_val, 0)?;
             }
 
@@ -216,6 +239,7 @@ impl MCI {
             if cur_cmd_index == Self::SWITCH_VOLTAGE as u32 {
                 self.private_cmd11_send(reg_val | cmd_reg)?;
             } else {
+                info!("switching voltage, reg_val is 0x{:x}", reg_val.bits());
                 self.private_cmd_send(reg_val, 0)?;
             }
 
@@ -267,7 +291,7 @@ impl MCI {
 
         // transfer command
         self.cmd_transfer(&cmd_data)?;
-
+        info!("dma cmd transfer ok");
         Ok(())
     }
 
@@ -297,7 +321,8 @@ impl MCI {
             if delay % 1000 == 0 {
                 debug!("polling dma end, reg_val = 0x{:x}", reg_val);
             }
-            // todo relax handler? 
+            
+            Self::relax_handler();
 
             delay -= 1;
             if wait_bits & reg_val == wait_bits || delay == 0 {
@@ -427,12 +452,6 @@ impl MCI {
         Ok(())
     }
 
-    /* Read PIO data, it works in IRQ mode */ // todo 不知道协议栈层需要不需要调用,已经实现.
-    /* Get cmd response and received data after wait poll status or interrupt signal */ // todo 不知道协议栈层需要不需要调用,已经实现.
-
-    /* Interrupt handler for SDIF instance */ //todo 在中断模式下会使用到
-    /* Register event call-back function as handler for interrupt events */ //todo 在中断模式下会使用到
-
     /// Reset controller from error state 
     pub fn restart(&self) -> MCIResult {
 
@@ -533,6 +552,7 @@ impl MCI {
 /// MCI private API 
 impl MCI {
     fn reset(&self) -> MCIResult {
+        info!("mci reset");
         /* set fifo */
         self.fifoth_set(
             MCIFifoThDMATransSize::DMATrans8, 

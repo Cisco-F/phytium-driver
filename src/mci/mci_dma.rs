@@ -1,11 +1,14 @@
+use core::ptr::NonNull;
+
 use alloc::vec::Vec;
-use dma_api::DSlice;
 use log::*;
+
+use crate::flush;
 
 use super::mci_data::MCIData;
 use super::MCI;
 use super::err::*;
-use super::constants::*;
+use super::consts::*;
 use super::regs::*;
 
 #[derive(Default)]
@@ -64,7 +67,6 @@ impl MCI {
                 }
             }
         }
-        debug!("dump ok");
     }
 
     /// setup DMA descriptor list before do transcation
@@ -91,7 +93,7 @@ impl MCI {
             return Err(MCIError::ShortBuf);
         }
 
-        debug!("DMA transfer 0x{:x} use {} desc, total {} available", data.buf_dma(), desc_num, desc_list.desc_num);
+        info!("DMA transfer 0x{:x} use {} desc, total {} available", data.buf_dma(), desc_num, desc_list.desc_num);
 
         // setup DMA descriptor list, so that we just need to update buffer address in each transcation
         let total_size = desc_list.desc_num as usize * core::mem::size_of::<FSdifIDmaDesc>();
@@ -151,14 +153,7 @@ impl MCI {
             }
         }
 
-        // todo 不太优雅 考虑后续修改
-        let desc_vec = unsafe {
-            core::mem::ManuallyDrop::new(
-                Vec::from_raw_parts(desc_list.first_desc, desc_num as usize, desc_num as usize)
-            )
-        };
-        let _ = DSlice::from(&desc_vec[..]);
-        // unsafe { dsb(); }
+        flush(NonNull::new(desc_list.first_desc).unwrap().cast(), desc_num as _);
         self.dump_dma_descriptor(desc_num);
         debug!("set dma desc ok");
 

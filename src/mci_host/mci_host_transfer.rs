@@ -2,7 +2,7 @@ use alloc::vec::Vec;
 
 use super::constants::*;
 
-pub(crate) struct MCIHostTransfer {
+pub struct MCIHostTransfer {
     data: Option<MCIHostData>,
     cmd: Option<MCIHostCmd>,
 }

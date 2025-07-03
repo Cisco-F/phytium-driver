@@ -438,7 +438,6 @@ dependencies = [
  "bitflags",
  "byte-unit",
  "bytemuck",
- "dma-api",
  "lazy_static",
  "log",
  "nb",
