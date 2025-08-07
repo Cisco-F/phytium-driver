@@ -66,36 +66,36 @@ pub enum MCIHostCommonCmd {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MCISDIOCommand {
-    SendRelativeAddress = 3, // Send Relative Address
+    SendRelativeAddress = 3,    // Send Relative Address
     SendOperationCondition = 5, // Send Operation Condition
     SendInterfaceCondition = 8, // Send Interface Condition
-    RWIODirect = 52, // Read/Write I/O Direct
-    RWIODirectExtended = 53, // Read/Write I/O Direct Extended
+    RWIODirect = 52,            // Read/Write I/O Direct
+    RWIODirectExtended = 53,    // Read/Write I/O Direct Extended
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MCISDIOCCCRAddr {
-    SDIOVer = 0x00,                 // CCCR & SDIO version
-    SDVersion = 0x01,               // SD version
-    IOEnable = 0x02,                // io enable register
-    IOReady = 0x03,                 // io ready register
-    IOIntEnable = 0x04,             // io interrupt enable register
-    IOIntPending = 0x05,            // io interrupt pending register
-    IOAbort = 0x06,                 // io abort register
-    BusInterface = 0x07,            // bus interface register
-    CardCapability = 0x08,          // card capability register
-    CommonCISPointer = 0x09,        // common CIS pointer register
-    BusSuspend = 0x0C,              // bus suspend register
-    FunctionSelect = 0x0D,          // function select register
-    ExecutionFlag = 0x0E,           // execution flag register
-    ReadyFlag = 0x0F,               // ready flag register
-    FN0BlockSizeLow = 0x10,         // FN0 block size register
-    FN0BlockSizeHigh = 0x11,        // FN0 block size register
-    PowerControl = 0x12,            // power control register
-    BusSpeed = 0x13,                // bus speed register
-    UHSITimingSupport = 0x14,       // UHS-I timing support register
-    DriverStrength = 0x15,          // Driver strength register
-    InterruptExtension = 0x16,      // Interrupt extension register
+    SDIOVer = 0x00,            // CCCR & SDIO version
+    SDVersion = 0x01,          // SD version
+    IOEnable = 0x02,           // io enable register
+    IOReady = 0x03,            // io ready register
+    IOIntEnable = 0x04,        // io interrupt enable register
+    IOIntPending = 0x05,       // io interrupt pending register
+    IOAbort = 0x06,            // io abort register
+    BusInterface = 0x07,       // bus interface register
+    CardCapability = 0x08,     // card capability register
+    CommonCISPointer = 0x09,   // common CIS pointer register
+    BusSuspend = 0x0C,         // bus suspend register
+    FunctionSelect = 0x0D,     // function select register
+    ExecutionFlag = 0x0E,      // execution flag register
+    ReadyFlag = 0x0F,          // ready flag register
+    FN0BlockSizeLow = 0x10,    // FN0 block size register
+    FN0BlockSizeHigh = 0x11,   // FN0 block size register
+    PowerControl = 0x12,       // power control register
+    BusSpeed = 0x13,           // bus speed register
+    UHSITimingSupport = 0x14,  // UHS-I timing support register
+    DriverStrength = 0x15,     // Driver strength register
+    InterruptExtension = 0x16, // Interrupt extension register
 }
 
 bitflags! {
@@ -140,7 +140,7 @@ pub(crate) enum MCIHostCurrentState {
 }
 
 impl MCIHostCurrentState {
-    pub(crate) fn current_state(state:u32) -> Self {
+    pub(crate) fn current_state(state: u32) -> Self {
         let state = (state & 0x00001E00) >> 9;
         match state {
             0 => MCIHostCurrentState::Idle,
@@ -155,7 +155,6 @@ impl MCIHostCurrentState {
             _ => MCIHostCurrentState::Idle,
         }
     }
-    
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -184,17 +183,17 @@ bitflags! {
     pub(crate) struct MCIHostOCR: u32 {
         /// Power up busy status (bit 31)
         const POWER_UP_BUSY_FLAG = 1 << 31;
-        
+
         /// Card/Host capacity status (bit 30)
         const HOST_CAPACITY_SUPPORT_FLAG = 1 << 30;
         /// Card capacity status (bit 30, same as HOST_CAPACITY_SUPPORT_FLAG)
         const CARD_CAPACITY_SUPPORT_FLAG = 1 << 30;
-        
+
         /// Switch to 1.8V request (bit 24)
         const SWITCH_18_REQUEST_FLAG = 1 << 24;
         /// Switch to 1.8V accepted (bit 24, same as SWITCH_18_REQUEST_FLAG)
         const SWITCH_18_ACCEPT_FLAG = 1 << 24;
-        
+
         /// VDD 2.7-2.8V (bit 15)
         const VDD_27_28 = 1 << 15;
         /// VDD 2.8-2.9V (bit 16)

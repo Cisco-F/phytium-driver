@@ -1,6 +1,6 @@
-use alloc::rc::Rc;
-use crate::mci_host::mci_host_card_detect::MCIHostCardDetect;
 use super::{consts::SdTimingMode, io_voltage::SdIoVoltage};
+use crate::mci_host::mci_host_card_detect::MCIHostCardDetect;
+use alloc::rc::Rc;
 
 pub(crate) struct SdUsrParam {
     pub(crate) sd_pwr: Option<SdPwrFn>,
@@ -17,7 +17,6 @@ type SdPwrFn = fn(bool);
 type SdIoStrengthFn = fn(SdTimingMode);
 
 impl SdUsrParam {
-
     pub fn new() -> Self {
         SdUsrParam {
             sd_pwr: None,

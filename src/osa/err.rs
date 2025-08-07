@@ -4,9 +4,9 @@ pub enum FMempError {
     InitTlsfError,
     BadMalloc,
     // PoolBuffer related errors
-    NotEnoughSpace,         // PoolBuffer size too small to copy contents from a slice
-    SizeNotAligned,         // PoolBuffer size isn't aligned to size::T
+    NotEnoughSpace, // PoolBuffer size too small to copy contents from a slice
+    SizeNotAligned, // PoolBuffer size isn't aligned to size::T
 }
 
 #[allow(unused)]
-pub type FMempStatus<T=()> = Result<T, FMempError>;
+pub type FMempStatus<T = ()> = Result<T, FMempError>;

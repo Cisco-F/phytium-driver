@@ -1,18 +1,18 @@
-use core::ops;
-use bitflags::bitflags;
-use crate::regs::FlagReg;
 use super::constants::*;
+use crate::regs::FlagReg;
+use bitflags::bitflags;
+use core::ops;
 
 pub trait XReg0: FlagReg {
-    fn func_set(x:u32) -> Self {
+    fn func_set(x: u32) -> Self {
         Self::from_bits_truncate(set_reg32_bits!(x, 2, 0))
     }
 
-    fn drive_set(x:u32) -> Self {
+    fn drive_set(x: u32) -> Self {
         Self::from_bits_truncate(set_reg32_bits!(x, 7, 4))
     }
 
-    fn pull_set(x:u32) -> Self {
+    fn pull_set(x: u32) -> Self {
         Self::from_bits_truncate(set_reg32_bits!(x, 9, 8))
     }
 
@@ -30,36 +30,36 @@ pub trait XReg0: FlagReg {
 }
 
 pub trait XReg1: FlagReg {
-    fn out_delay_delicate_set(x:u32) -> Self {
-        Self::from_bits_truncate(set_reg32_bits!(x,11,9))
+    fn out_delay_delicate_set(x: u32) -> Self {
+        Self::from_bits_truncate(set_reg32_bits!(x, 11, 9))
     }
 
-    fn out_delay_rough_set(x:u32) -> Self {
-        Self::from_bits_truncate(set_reg32_bits!(x,14,12))
+    fn out_delay_rough_set(x: u32) -> Self {
+        Self::from_bits_truncate(set_reg32_bits!(x, 14, 12))
     }
 
-    fn in_delay_delicate_set(x:u32) -> Self {
-        Self::from_bits_truncate(set_reg32_bits!(x,3,1))
+    fn in_delay_delicate_set(x: u32) -> Self {
+        Self::from_bits_truncate(set_reg32_bits!(x, 3, 1))
     }
 
-    fn in_delay_rough_set(x:u32) -> Self {
-        Self::from_bits_truncate(set_reg32_bits!(x,6,4))
+    fn in_delay_rough_set(x: u32) -> Self {
+        Self::from_bits_truncate(set_reg32_bits!(x, 6, 4))
     }
 
     fn out_delay_delicate_get(self) -> u32 {
-        get_reg32_bits!(self.bits(),11,9)
+        get_reg32_bits!(self.bits(), 11, 9)
     }
 
     fn out_delay_rough_get(self) -> u32 {
-        get_reg32_bits!(self.bits(),14,12)
+        get_reg32_bits!(self.bits(), 14, 12)
     }
 
     fn in_delay_delicate_get(self) -> u32 {
-        get_reg32_bits!(self.bits(),3,1)
+        get_reg32_bits!(self.bits(), 3, 1)
     }
 
     fn in_delay_rough_get(self) -> u32 {
-        get_reg32_bits!(self.bits(),6,4)
+        get_reg32_bits!(self.bits(), 6, 4)
     }
 
     fn out_delay_en() -> Self {
@@ -96,9 +96,7 @@ macro_rules! X_REG0 {
             const REG: u32 = $reg_addr;
         }
 
-        impl XReg0 for $reg_name {
-
-        }
+        impl XReg0 for $reg_name {}
     };
 }
 
@@ -133,12 +131,9 @@ macro_rules! X_REG1 {
             const REG: u32 = $reg_addr;
         }
 
-        impl XReg1 for $reg_name {
-
-        }
+        impl XReg1 for $reg_name {}
     };
 }
-
 
 X_REG0!(An59Reg0, FIOPAD_AN59_REG0_OFFSET);
 

@@ -7,16 +7,32 @@ extern crate alloc;
 
 #[bare_test::tests]
 mod tests {
-    use core::{arch::{aarch64::{__dsb, __isb, SY}, asm}, ptr::NonNull, time::Duration};
+    use core::{
+        arch::{
+            aarch64::{__dsb, __isb, SY},
+            asm,
+        },
+        ptr::NonNull,
+        time::Duration,
+    };
 
     use alloc::vec::Vec;
     use bare_test::{
-        globals::{global_val, PlatformInfoKind}, irq::{IrqHandleResult, IrqParam}, mem::{mmu::iomap, PhysAddr, VirtAddr}, platform_if::CacheOp, time::spin_delay, GetIrqConfig
+        globals::{global_val, PlatformInfoKind},
+        irq::{IrqHandleResult, IrqParam},
+        mem::{mmu::iomap, PhysAddr, VirtAddr},
+        platform_if::CacheOp,
+        time::spin_delay,
+        GetIrqConfig,
     };
     use log::*;
     use phytium_mci::{
-        mci::{fsdif_interrupt_handler, 
-        regs::{MCICtrl, MCIDMACStatus, MCIIntMask, MCIRawInts, MCIReg}}, sd::{SdCard, REG_BASE}, set_impl, IoPad, Kernel, PAD_ADDRESS
+        mci::{
+            fsdif_interrupt_handler,
+            regs::{MCICtrl, MCIDMACStatus, MCIIntMask, MCIRawInts, MCIReg},
+        },
+        sd::{init_reg_base, SdCard},
+        set_impl, IoPad, Kernel, PAD_ADDRESS,
     };
 
     const SD_START_BLOCK: u32 = 131072;
@@ -44,13 +60,15 @@ mod tests {
         );
         let mci_reg_base = iomap((reg.address as usize).into(), reg.size.unwrap());
         clear_pending_irq(mci_reg_base);
-        unsafe { REG_BASE = mci_reg_base; }
+
+        // 一定要初始化，不然注册中断处理函数会报错
+        init_reg_base(mci_reg_base);
 
         let iopad_reg_base = iomap((PAD_ADDRESS as usize).into(), 0x2000);
         let iopad = IoPad::new(iopad_reg_base);
 
         if cfg!(feature = "irq") {
-            let irq_info= mci0.irq_info().unwrap();
+            let irq_info = mci0.irq_info().unwrap();
             IrqParam {
                 intc: irq_info.irq_parent,
                 cfg: irq_info.cfgs[0].clone(),
@@ -69,12 +87,12 @@ mod tests {
             );
         }
 
-        let mut sdcard = SdCard::new(mci_reg_base,iopad);
+        let mut sdcard = SdCard::new(mci_reg_base, iopad);
         if let Err(err) = sdcard.init(mci_reg_base) {
-            error!("Sd Card Init Fail, error = {:?}",err);
+            error!("Sd Card Init Fail, error = {:?}", err);
             panic!();
         }
-        
+
         ////////////////////// SD card init finished //////////////////////
 
         // 初始化write buffer
@@ -84,11 +102,15 @@ mod tests {
             buffer[i] = i as u32;
         }
 
-        sdcard.write_blocks(&mut buffer, SD_START_BLOCK, SD_USE_BLOCK).unwrap();
+        sdcard
+            .write_blocks(&mut buffer, SD_START_BLOCK, SD_USE_BLOCK)
+            .unwrap();
 
         let mut receive_buf = Vec::new();
 
-        sdcard.read_blocks(&mut receive_buf, SD_START_BLOCK, SD_USE_BLOCK).unwrap();
+        sdcard
+            .read_blocks(&mut receive_buf, SD_START_BLOCK, SD_USE_BLOCK)
+            .unwrap();
 
         for i in 0..receive_buf.len() {
             assert_eq!(receive_buf[i], buffer[i]);
@@ -176,7 +198,11 @@ mod tests {
         fn mmap(virt_addr: NonNull<u8>) -> u64 {
             let vaddr = VirtAddr::from(virt_addr);
             let paddr = PhysAddr::from(vaddr);
-            debug!("do mmap, va: {:x}, pa {:x}", virt_addr.as_ptr() as usize, paddr.as_usize());
+            debug!(
+                "do mmap, va: {:x}, pa {:x}",
+                virt_addr.as_ptr() as usize,
+                paddr.as_usize()
+            );
             paddr.as_usize() as _
         }
         fn flush(addr: NonNull<u8>, size: usize) {

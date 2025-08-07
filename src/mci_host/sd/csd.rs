@@ -45,7 +45,6 @@ impl SdCsd {
             file_format: 0,
         }
     }
-    
 }
 
 bitflags! {

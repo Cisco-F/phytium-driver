@@ -6,12 +6,12 @@ use core::{ptr::NonNull, time::Duration};
 
 #[macro_use]
 mod regs;
-pub mod mci;
+mod aarch;
 pub mod iopad;
+pub mod mci;
 pub mod mci_host;
 pub mod osa;
 mod tools;
-mod aarch;
 
 pub use iopad::*;
 pub use mci_host::*;
@@ -46,7 +46,9 @@ pub(crate) fn flush(addr: NonNull<u8>, size: usize) {
         fn _phytium_mci_flush(addr: NonNull<u8>, size: usize);
     }
 
-    unsafe { _phytium_mci_flush(addr, size); }
+    unsafe {
+        _phytium_mci_flush(addr, size);
+    }
 }
 
 pub(crate) fn invalidate(addr: core::ptr::NonNull<u8>, size: usize) {
@@ -54,7 +56,9 @@ pub(crate) fn invalidate(addr: core::ptr::NonNull<u8>, size: usize) {
         fn _phytium_mci_invalidate(addr: core::ptr::NonNull<u8>, size: usize);
     }
 
-    unsafe { _phytium_mci_invalidate(addr, size); }
+    unsafe {
+        _phytium_mci_invalidate(addr, size);
+    }
 }
 
 #[macro_export]

@@ -14,4 +14,4 @@ impl RegError for FioPadError {
     }
 }
 
-pub type FioPadResult<T=()> = Result<T, FioPadError>;
+pub type FioPadResult<T = ()> = Result<T, FioPadError>;

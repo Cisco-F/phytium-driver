@@ -25,9 +25,9 @@ pub const SDMMC_OSA_EVENT_CARD_INSERTED: u32 = 1 << 8;
 pub const SDMMC_OSA_EVENT_CARD_REMOVED: u32 = 1 << 9;
 
 /// Combined error events mask for transfer
-pub const FSDIF_TRANS_ERR_EVENTS: u32 = SDMMC_OSA_EVENT_TRANSFER_CMD_FAIL |
-                                        SDMMC_OSA_EVENT_TRANSFER_DATA_FAIL |
-                                        SDMMC_OSA_EVENT_CARD_REMOVED;
+pub const FSDIF_TRANS_ERR_EVENTS: u32 = SDMMC_OSA_EVENT_TRANSFER_CMD_FAIL
+    | SDMMC_OSA_EVENT_TRANSFER_DATA_FAIL
+    | SDMMC_OSA_EVENT_CARD_REMOVED;
 
 /// Event flag for AND operation
 pub const SDMMC_OSA_EVENT_FLAG_AND: u32 = 1 << 0;

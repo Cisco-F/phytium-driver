@@ -42,26 +42,26 @@ bitflags! {
 // 定义传输模式枚举
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum MCITransMode {
-    DMA,      // DMA传输模式
-    PIO,      // PIO传输模式（通过读/写Fifo）
+    DMA, // DMA传输模式
+    PIO, // PIO传输模式（通过读/写Fifo）
 }
 
 // 定义中断类型枚举
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum MCIIntrType {
-    GeneralIntr,       // 属于控制器的中断状态
-    DmaIntr,           // 属于DMA的中断状态
+    GeneralIntr, // 属于控制器的中断状态
+    DmaIntr,     // 属于DMA的中断状态
 }
 
 // 定义事件类型枚举
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum FSdifEvtType {
-    CardDetected = 0,  // 卡检测事件
-    CmdDone,           // 命令传输完成事件
-    DataDone,          // 包含数据的命令传输完成事件
-    SdioIrq,           // SDIO卡自定义事件
-    ErrOccured,        // 传输中出现错误
-    NumOfEvt,          // 事件数量
+    CardDetected = 0, // 卡检测事件
+    CmdDone,          // 命令传输完成事件
+    DataDone,         // 包含数据的命令传输完成事件
+    SdioIrq,          // SDIO卡自定义事件
+    ErrOccured,       // 传输中出现错误
+    NumOfEvt,         // 事件数量
 }
 
 // 定义时钟速度枚举
@@ -141,12 +141,12 @@ pub const FSDIF_EMMC_DDR_REG_OFFSET: u32 = 0x10C; // the EMMC DDR reg
 pub const FSDIF_ENABLE_SHIFT_OFFSET: u32 = 0x110; // the enable phase shift reg
 pub const FSDIF_DATA_OFFSET: u32 = 0x200; // the data FIFO access
 
-pub const RETRIES_TIMEOUT:usize = 50000; /* timeout for retries */
+pub const RETRIES_TIMEOUT: usize = 50000; /* timeout for retries */
 pub const COMMAND_TIMEOUT: u32 = 5000;
-pub const FSDIF_DELAY_US:u32 = 5;
-pub const MCI_MAX_FIFO_CNT:u32 = 0x800;
+pub const FSDIF_DELAY_US: u32 = 5;
+pub const MCI_MAX_FIFO_CNT: u32 = 0x800;
 
-pub const FSL_SDMMC_MAX_CMD_RETRIES:u32 = 10;
+pub const FSL_SDMMC_MAX_CMD_RETRIES: u32 = 10;
 
 pub const FSDIF0_ID: u32 = 0;
 pub const FSDIF1_ID: u32 = 1;
@@ -154,13 +154,13 @@ pub const FSDIF1_ID: u32 = 1;
 pub const FT_COMPONENT_IS_READY: u32 = 0x11111111;
 
 // DMA相关
-pub const FSDIF_IDMAC_DES0_DIC: u32 = 1 << 1;    /* 内部描述表不触发TI/RI中断 */
-pub const FSDIF_IDMAC_DES0_LD: u32 = 1 << 2;     /* 数据的最后一个描述符 */
-pub const FSDIF_IDMAC_DES0_FD: u32 = 1 << 3;     /* 数据的第一个描述符 */
-pub const FSDIF_IDMAC_DES0_CH: u32 = 1 << 4;     /* 链接下一个描述符地址 */
-pub const FSDIF_IDMAC_DES0_ER: u32 = 1 << 5;     /* 链表已经到达最后一个链表 */
-pub const FSDIF_IDMAC_DES0_CES: u32 = 1 << 30;   /* RINTSTS寄存器错误汇总 */
-pub const FSDIF_IDMAC_DES0_OWN: u32 = 1 << 31;   /* 描述符关联DMA，完成传输后该位置置0 */
+pub const FSDIF_IDMAC_DES0_DIC: u32 = 1 << 1; /* 内部描述表不触发TI/RI中断 */
+pub const FSDIF_IDMAC_DES0_LD: u32 = 1 << 2; /* 数据的最后一个描述符 */
+pub const FSDIF_IDMAC_DES0_FD: u32 = 1 << 3; /* 数据的第一个描述符 */
+pub const FSDIF_IDMAC_DES0_CH: u32 = 1 << 4; /* 链接下一个描述符地址 */
+pub const FSDIF_IDMAC_DES0_ER: u32 = 1 << 5; /* 链表已经到达最后一个链表 */
+pub const FSDIF_IDMAC_DES0_CES: u32 = 1 << 30; /* RINTSTS寄存器错误汇总 */
+pub const FSDIF_IDMAC_DES0_OWN: u32 = 1 << 31; /* 描述符关联DMA，完成传输后该位置置0 */
 pub const FSDIF_IDMAC_MAX_BUF_SIZE: u32 = 0x1000; // 每个desc在chained mode最多传输的字节数
 
 // 中断相关
