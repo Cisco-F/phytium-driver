@@ -1,5 +1,4 @@
-#[derive(Debug)]
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub enum FioPadFunc {
     Func0 = 0b000,
     Func1,
@@ -10,7 +9,7 @@ pub enum FioPadFunc {
     Func6,
     Func7 = 0b111,
 
-    NumOfFunc
+    NumOfFunc,
 }
 
 impl From<u32> for FioPadFunc {
@@ -24,7 +23,7 @@ impl From<u32> for FioPadFunc {
             0b101 => FioPadFunc::Func5,
             0b110 => FioPadFunc::Func6,
             0b111 => FioPadFunc::Func7,
-            _ => panic!("Invalid value for FioPadFunc")
+            _ => panic!("Invalid value for FioPadFunc"),
         }
     }
 }
@@ -40,13 +39,12 @@ impl Into<u32> for FioPadFunc {
             FioPadFunc::Func5 => 0b101,
             FioPadFunc::Func6 => 0b110,
             FioPadFunc::Func7 => 0b111,
-            _ => panic!("Invalid value for FioPadFunc")
+            _ => panic!("Invalid value for FioPadFunc"),
         }
     }
 }
 
-#[derive(Debug)]
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub enum FioPadDrive {
     Drv0 = 0b0000,
     Drv1,
@@ -65,7 +63,7 @@ pub enum FioPadDrive {
     Drv14,
     Drv15 = 0b1111,
 
-    NumOfDrive
+    NumOfDrive,
 }
 
 impl From<u32> for FioPadDrive {
@@ -87,7 +85,7 @@ impl From<u32> for FioPadDrive {
             0b1101 => FioPadDrive::Drv13,
             0b1110 => FioPadDrive::Drv14,
             0b1111 => FioPadDrive::Drv15,
-            _ => panic!("Invalid value for FioPadDrive")
+            _ => panic!("Invalid value for FioPadDrive"),
         }
     }
 }
@@ -111,19 +109,18 @@ impl Into<u32> for FioPadDrive {
             FioPadDrive::Drv13 => 0b1101,
             FioPadDrive::Drv14 => 0b1110,
             FioPadDrive::Drv15 => 0b1111,
-            _ => panic!("Invalid value for FioPadDrive")
+            _ => panic!("Invalid value for FioPadDrive"),
         }
     }
 }
 
-#[derive(Debug)]
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub enum FioPadPull {
     PullNone = 0b00,
     PullDown = 0b01,
     PullUp = 0b10,
 
-    NumOfPull
+    NumOfPull,
 }
 
 impl From<u32> for FioPadPull {
@@ -132,7 +129,7 @@ impl From<u32> for FioPadPull {
             0b00 => FioPadPull::PullNone,
             0b01 => FioPadPull::PullDown,
             0b10 => FioPadPull::PullUp,
-            _ => panic!("Invalid value for FioPadPull")
+            _ => panic!("Invalid value for FioPadPull"),
         }
     }
 }
@@ -143,7 +140,7 @@ impl Into<u32> for FioPadPull {
             FioPadPull::PullNone => 0b00,
             FioPadPull::PullDown => 0b01,
             FioPadPull::PullUp => 0b10,
-            _ => panic!("Invalid value for FioPadPull")
+            _ => panic!("Invalid value for FioPadPull"),
         }
     }
 }
@@ -152,45 +149,42 @@ impl FioPadPull {
     pub fn is_pull_none(&self) -> bool {
         match self {
             FioPadPull::PullNone => true,
-            _ => false
+            _ => false,
         }
     }
 
     pub fn is_pull_down(&self) -> bool {
         match self {
             FioPadPull::PullDown => true,
-            _ => false
+            _ => false,
         }
     }
 
     pub fn is_pull_up(&self) -> bool {
         match self {
             FioPadPull::PullUp => true,
-            _ => false
+            _ => false,
         }
     }
 }
 
-#[derive(Debug)]
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum FioPadDelayDir {
     OutputDelay = 0, // Delay setting direction to output
     InputDelay,      // Delay setting direction to input
 
-    NumOfDelayDir
+    NumOfDelayDir,
 }
 
-#[derive(Debug)]
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum FioPadDelayType {
     DelayCoarseTuning = 0, // delay coarse tuning
     DelayFineTuning,       // delay fine tuning
 
-    NumOfDelayType
+    NumOfDelayType,
 }
 
-#[derive(Debug)]
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub enum FioPadDelay {
     DelayNone = 0,
     Delay1,
@@ -201,7 +195,7 @@ pub enum FioPadDelay {
     Delay6,
     Delay7,
 
-    NumOfDelay
+    NumOfDelay,
 }
 
 impl From<u32> for FioPadDelay {
@@ -215,7 +209,7 @@ impl From<u32> for FioPadDelay {
             5 => FioPadDelay::Delay5,
             6 => FioPadDelay::Delay6,
             7 => FioPadDelay::Delay7,
-            _ => panic!("Invalid value for FioPadDelay")
+            _ => panic!("Invalid value for FioPadDelay"),
         }
     }
 }
@@ -231,7 +225,7 @@ impl Into<u32> for FioPadDelay {
             FioPadDelay::Delay5 => 5,
             FioPadDelay::Delay6 => 6,
             FioPadDelay::Delay7 => 7,
-            _ => panic!("Invalid value for FioPadDelay")
+            _ => panic!("Invalid value for FioPadDelay"),
         }
     }
 }

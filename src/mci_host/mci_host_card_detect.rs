@@ -2,7 +2,7 @@ use super::constants::MCIHostDetectCardType;
 
 #[allow(unused)]
 pub struct MCIHostCardDetect {
-    pub(crate) typ:MCIHostDetectCardType,
+    pub(crate) typ: MCIHostDetectCardType,
     pub(crate) cd_debounce_ms: u32,
     // todo Function type that takes a boolean and a user data pointer
     pub(crate) card_detected: Option<MCIHostCdStatusFn>,

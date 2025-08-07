@@ -1,14 +1,14 @@
-use super::mci_data::MCIData;
 use super::consts::*;
+use super::mci_data::MCIData;
 
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub struct MCICmdData {
     cmdidx: u32,
     cmdarg: u32,
     response: [u32; 4],
     flag: MCICmdFlag,
     data: Option<MCIData>,
-    success: bool
+    success: bool,
 }
 
 #[allow(unused)]
@@ -20,7 +20,7 @@ impl MCICmdData {
             response: [0; 4],
             flag: MCICmdFlag::empty(),
             data: None,
-            success: false
+            success: false,
         }
     }
 
@@ -37,7 +37,7 @@ impl MCICmdData {
         self.success
     }
 
-    pub(crate) fn success_set(&mut self,success: bool) {
+    pub(crate) fn success_set(&mut self, success: bool) {
         self.success = success;
     }
 
@@ -45,7 +45,7 @@ impl MCICmdData {
         self.cmdidx
     }
 
-    pub(crate) fn cmdidx_set(&mut self,cmdidx:u32) {
+    pub(crate) fn cmdidx_set(&mut self, cmdidx: u32) {
         self.cmdidx = cmdidx;
     }
 
@@ -53,15 +53,15 @@ impl MCICmdData {
         self.cmdarg
     }
 
-    pub(crate) fn cmdarg_set(&mut self,cmdarg:u32) {
+    pub(crate) fn cmdarg_set(&mut self, cmdarg: u32) {
         self.cmdarg = cmdarg;
     }
-    
+
     pub(crate) fn flag(&self) -> &MCICmdFlag {
         &self.flag
     }
 
-    pub(crate) fn flag_set(&mut self,flag:MCICmdFlag) {
+    pub(crate) fn flag_set(&mut self, flag: MCICmdFlag) {
         self.flag = flag
     }
 
@@ -85,8 +85,7 @@ impl MCICmdData {
         self.data.as_ref()
     }
 
-    pub(crate) fn set_data(&mut self,data: Option<MCIData>) {
+    pub(crate) fn set_data(&mut self, data: Option<MCIData>) {
         self.data = data
     }
-
 }

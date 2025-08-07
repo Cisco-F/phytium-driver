@@ -1,18 +1,23 @@
-use core::{alloc::Layout, mem::MaybeUninit, ptr::NonNull, sync::atomic::{AtomicU32, Ordering}};
+use core::{
+    alloc::Layout,
+    mem::MaybeUninit,
+    ptr::NonNull,
+    sync::atomic::{AtomicBool, AtomicU32, Ordering},
+    time::Duration,
+};
 
 use alloc::{boxed::Box, sync::Arc};
 use consts::{MAX_POOL_SIZE, SDMMC_OSA_EVENT_FLAG_AND};
 use err::FMempError;
-use log::{error, info};
-use rlsf::Tlsf;
-use semaphore::Semaphore;
-use spin::Mutex;
 use lazy_static::*;
+use rlsf::Tlsf;
+use spin::Mutex;
 
-mod err;
+use crate::{mci, sleep};
+
 pub mod consts;
+mod err;
 pub mod pool_buffer;
-pub mod semaphore;
 
 /// Memory menaged by Tlsf pool
 static mut POOL: [MaybeUninit<u8>; MAX_POOL_SIZE] = [MaybeUninit::uninit(); MAX_POOL_SIZE];
@@ -25,7 +30,7 @@ pub struct FMemp<'a> {
 
 lazy_static! {
     /// Global memory pool manager
-    pub static ref GLOBAL_FMEMP: Mutex<Box<FMemp<'static>>> = 
+    pub static ref GLOBAL_FMEMP: Mutex<Box<FMemp<'static>>> =
         Mutex::new(Box::new(FMemp::new()));
 }
 
@@ -43,7 +48,11 @@ impl<'a> FMemp<'a> {
         self.is_ready = true;
     }
 
-    unsafe fn alloc_aligned(&mut self, size: usize, align: usize) -> Result<NonNull<u8>, FMempError> {
+    unsafe fn alloc_aligned(
+        &mut self,
+        size: usize,
+        align: usize,
+    ) -> Result<NonNull<u8>, FMempError> {
         let layout = Layout::from_size_align_unchecked(size, align);
         if let Some(result) = self.tlsf_ptr.allocate(layout) {
             Ok(result)
@@ -55,11 +64,13 @@ impl<'a> FMemp<'a> {
     unsafe fn dealloc(&mut self, addr: NonNull<u8>, size: usize) {
         self.tlsf_ptr.deallocate(addr, size);
     }
-}  
+}
 
 /// Init memory pool with size of ['MAX_POOL_SIZE']
 pub fn osa_init() {
-    unsafe { GLOBAL_FMEMP.lock().init(); }
+    unsafe {
+        GLOBAL_FMEMP.lock().init();
+    }
 }
 
 /// Alloc 'size' bytes space, aligned to 64 KiB by default
@@ -74,63 +85,82 @@ pub fn osa_alloc_aligned(size: usize, align: usize) -> Result<NonNull<u8>, FMemp
 
 /// Dealloc 'size' bytes space from 'addr'
 pub fn osa_dealloc(addr: NonNull<u8>, size: usize) {
-    unsafe { GLOBAL_FMEMP.lock().dealloc(addr, size); }
+    unsafe {
+        GLOBAL_FMEMP.lock().dealloc(addr, size);
+    }
 }
 
 pub struct OSAEvent {
     event_flag: AtomicU32,
-    handle: Semaphore,
+    notification: AtomicBool,
+}
+
+impl Default for OSAEvent {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl OSAEvent {
-    pub fn default() -> Self {
+    pub const fn new() -> Self {
         Self {
             event_flag: AtomicU32::new(0),
-            handle: Semaphore::new(0),
+            notification: AtomicBool::new(false),
         }
     }
+
     pub fn osa_event_set(&self, event_type: u32) {
         self.event_flag.fetch_or(event_type, Ordering::SeqCst);
-        self.handle.up();
+        self.notification.store(true, Ordering::Release);
     }
-    pub fn osa_event_wait(&self, event_type: u32, _timeout_ms: u32, event: &mut u32, flags: u32) -> Result<(), &'static str> {
-        info!("waiting event");
 
-        self.handle.down();
-        *event = self.osa_event_get();
-        if flags & SDMMC_OSA_EVENT_FLAG_AND != 0 {
-            if *event == event_type {
-                return Ok(());
+    pub fn osa_event_wait(&self, event_type: u32, timeout_ticks: u32) -> Result<u32, &'static str> {
+        let mut ticks = 0;
+
+        loop {
+            if self.notification.load(Ordering::Acquire) {
+                let events = self.event_flag.load(Ordering::SeqCst);
+                if events & event_type != 0 {
+                    self.notification.store(false, Ordering::Release);
+                    return Ok(events);
+                }
             }
-        } else {
-            if *event & event_type != 0 {
-                return Ok(());
+
+            if ticks >= timeout_ticks {
+                return Err("timeout");
             }
+
+            ticks += 1;
+            #[cfg(feature = "pio")]
+            sleep(Duration::from_millis(2));
+
+            core::hint::spin_loop();
         }
+    }
 
-        error!("event wait failed");
-        Err("event wait failed")
-    }
-    pub fn osa_event_get(&self) -> u32 {
-        self.event_flag.load(Ordering::SeqCst)
-    }
     pub fn osa_event_clear(&self, event_type: u32) {
         self.event_flag.fetch_and(!event_type, Ordering::SeqCst);
+
+        if self.event_flag.load(Ordering::SeqCst) == 0 {
+            self.notification.store(false, Ordering::Release);
+        }
+    }
+
+    pub fn osa_event_get(&self) -> u32 {
+        self.event_flag.load(Ordering::SeqCst)
     }
 }
 
 lazy_static! {
-    /// Global event handler
-    pub static ref OSA_EVENT: Arc<OSAEvent> = 
-        Arc::new(OSAEvent::default());
+    static ref OSA_EVENT: OSAEvent = OSAEvent::new();
 }
 
 pub fn osa_event_set(event_type: u32) {
     OSA_EVENT.osa_event_set(event_type);
 }
 
-pub fn osa_event_wait(event_type: u32, _timeout_ms: u32, event: &mut u32, flags: u32) -> Result<(), &'static str> {
-    OSA_EVENT.osa_event_wait(event_type, _timeout_ms, event, flags)
+pub fn osa_event_wait(event_type: u32, timeout: u32) -> Result<(), &'static str> {
+    OSA_EVENT.osa_event_wait(event_type, timeout).map(|_| ())
 }
 
 pub fn osa_event_get() -> u32 {

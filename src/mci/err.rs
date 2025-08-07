@@ -21,4 +21,4 @@ impl RegError for MCIError {
     }
 }
 
-pub type MCIResult<T=()> = Result<T, MCIError>;
+pub type MCIResult<T = ()> = Result<T, MCIError>;

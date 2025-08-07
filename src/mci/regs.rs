@@ -1,7 +1,7 @@
 use core::ops;
 
-use bitflags::bitflags;
 use crate::mci::{consts::*, err::MCIError};
+use bitflags::bitflags;
 
 use super::{FlagReg, Reg};
 
@@ -87,21 +87,19 @@ impl FlagReg for MCIClkDiv {
 }
 
 impl MCIClkDiv {
-    pub fn clk_sample_set(x:u32) -> Self {
+    pub fn clk_sample_set(x: u32) -> Self {
         Self::from_bits_truncate(set_reg32_bits!(x, 23, 16))
     }
-    pub fn clk_drv_set(x:u32) -> Self {
+    pub fn clk_drv_set(x: u32) -> Self {
         Self::from_bits_truncate(set_reg32_bits!(x, 15, 8))
     }
-    pub fn clk_divider_set(x:u32) -> Self {
+    pub fn clk_divider_set(x: u32) -> Self {
         Self::from_bits_truncate(set_reg32_bits!(x, 7, 0))
     }
-    pub fn clk_div(samp:u32,drv:u32,div:u32) -> Self {
-        Self::clk_sample_set(samp) | 
-        Self::clk_drv_set(drv) | 
-        Self::clk_divider_set(div)
+    pub fn clk_div(samp: u32, drv: u32, div: u32) -> Self {
+        Self::clk_sample_set(samp) | Self::clk_drv_set(drv) | Self::clk_divider_set(div)
     }
-    pub fn clk_divider_get(div_reg:u32) -> Self {
+    pub fn clk_divider_get(div_reg: u32) -> Self {
         MCIClkDiv::from_bits_truncate(get_reg32_bits!(div_reg, 7, 0))
     }
 }
@@ -164,10 +162,9 @@ impl FlagReg for MCITimeout {
 }
 
 impl MCITimeout {
-    pub fn timeout_data(data_timeout:MCITimeout,resp_timeout:MCITimeout) -> MCITimeout{
+    pub fn timeout_data(data_timeout: MCITimeout, resp_timeout: MCITimeout) -> MCITimeout {
         MCITimeout::from_bits_truncate(
-            (genmask!(31,8) & (data_timeout.bits() << 8)) | 
-            (genmask!(7,0) & resp_timeout.bits())
+            (genmask!(31, 8) & (data_timeout.bits() << 8)) | (genmask!(7, 0) & resp_timeout.bits()),
         )
     }
 }
@@ -222,7 +219,7 @@ bitflags! {
         const INTS_DATA_MASK = 0x2288;
         // const INTS_CMD_MASK = RE_BIT | CMD_BIT | RCRC_BIT | RTO_BIT | HTO_BIT | HLE_BIT;
         const INTS_CMD_MASK = 0x1546;
-        
+
     }
 }
 
@@ -264,6 +261,7 @@ impl FlagReg for MCIMaskedInts {
 
 // FSDIF_RAW_INTS_OFFSET Register
 bitflags! {
+    #[derive(Clone, Copy)]
     pub struct MCIRawInts: u32 {
         const CD_BIT = 1 << 0;       /* RW Card detect (CD) */
         const RE_BIT = 1 << 1;       /* RW Response error (RE) */
@@ -329,8 +327,7 @@ impl FlagReg for MCICmd {
 }
 
 impl MCICmd {
-    
-    pub fn index_set(x:u32) -> Self {
+    pub fn index_set(x: u32) -> Self {
         Self::from_bits_truncate(set_reg32_bits!(x, 5, 0))
     }
 
@@ -426,15 +423,11 @@ impl MCIFifoTh {
     rx_wmark: FIFO threshold watermark level when receiving data to card.
     tx_wmark: FIFO threshold watermark level when transmitting data to card
     */
-    pub fn fifoth(
-        trans_size:MCIFifoThDMATransSize,
-        rx_wmark:u32,
-        tx_wmark:u32
-    ) -> Self {
-        let trans_size:u32 = trans_size.into();
-        (MCIFifoTh::DMA_TRANS_MASK & (trans_size << 28)) |
-        (MCIFifoTh::RX_WMARK_MASK & (rx_wmark << 16)) |
-        (MCIFifoTh::TX_WMARK_MASK & tx_wmark)
+    pub fn fifoth(trans_size: MCIFifoThDMATransSize, rx_wmark: u32, tx_wmark: u32) -> Self {
+        let trans_size: u32 = trans_size.into();
+        (MCIFifoTh::DMA_TRANS_MASK & (trans_size << 28))
+            | (MCIFifoTh::RX_WMARK_MASK & (rx_wmark << 16))
+            | (MCIFifoTh::TX_WMARK_MASK & tx_wmark)
     }
 }
 
@@ -452,7 +445,7 @@ pub enum MCIFifoThDMATransSize {
     DMATrans32 = 0b100,
     DMATrans64 = 0b101,
     DMATrans128 = 0b110,
-    DMATrans256 = 0b111
+    DMATrans256 = 0b111,
 }
 
 impl From<MCIFifoThDMATransSize> for u32 {
@@ -538,6 +531,7 @@ impl FlagReg for MCIBusMode {
 
 // FSDIF_DMAC_STATUS_OFFSET Register
 bitflags! {
+    #[derive(Clone, Copy)]
     pub struct MCIDMACStatus: u32 {
         const TI = 1 << 0;  /* RW 发送中断。表示链表的数据发送完成 */
         const RI = 1 << 1;  /* RW 接收中断。表示链表的数据接收完成 */
@@ -547,8 +541,8 @@ bitflags! {
         const CES = 1 << 5; /* RW 卡错误汇总 */
         const NIS = 1 << 8; /* RW 正常中断汇总 */
         const AIS = 1 << 9; /* RW 异常中断汇总 */
-        const EB_BIT0 = 1 << 10; 
-        const EB_BIT1 = 1 << 11; 
+        const EB_BIT0 = 1 << 10;
+        const EB_BIT1 = 1 << 11;
         const EB_BIT2 = 1 << 12;
         const FSM_BIT0 = 1 << 13;
         const FSM_BIT1 = 1 << 14;
@@ -677,19 +671,17 @@ impl MCIClkSrc {
     pub fn uhs_clk_div(x: u32) -> Self {
         Self::UHS_CLK_DIV_MASK & Self::from_bits_truncate(x << 8)
     }
-    
+
     pub fn uhs_clk_samp(x: u32) -> Self {
         Self::UHS_CLK_SAMP_MASK & Self::from_bits_truncate(x << 16)
     }
-    
+
     pub fn uhs_clk_drv(x: u32) -> Self {
         Self::UHS_CLK_DRV_MASK & Self::from_bits_truncate(x << 24)
     }
 
     pub fn uhs_reg(drv_phase: u32, samp_phase: u32, clk_div: u32) -> Self {
-        Self::uhs_clk_div(clk_div) | 
-        Self::uhs_clk_samp(samp_phase) | 
-        Self::uhs_clk_drv(drv_phase)
+        Self::uhs_clk_div(clk_div) | Self::uhs_clk_samp(samp_phase) | Self::uhs_clk_drv(drv_phase)
     }
 }
 

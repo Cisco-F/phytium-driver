@@ -7,7 +7,7 @@ pub(crate) struct SdStatus {
     // SD card type
     pub(crate) card_type: u16,
     // Size of protected area
-    pub(crate)  protected_size: u32,
+    pub(crate) protected_size: u32,
     // Speed class of card
     pub(crate) speed_class: u8,
     // Performance of move indicated by 1[MB/S] step
@@ -43,5 +43,4 @@ impl SdStatus {
             uhs_au_size: 0,
         }
     }
-    
 }

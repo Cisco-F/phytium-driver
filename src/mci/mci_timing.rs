@@ -10,7 +10,7 @@ pub struct MCITiming {
     clk_div: u32,
     clk_src: u32,
     shift: u32,
-    pad_delay: MCIPadDelay //* 用于调整IO的延时 */
+    pad_delay: MCIPadDelay, //* 用于调整IO的延时 */
 }
 
 impl MCITiming {
@@ -33,10 +33,10 @@ enum MCIPadDelay {
 }
 
 impl MCITiming {
-    pub(crate) fn pad_delay(&self,iopad:&mut IoPad,mci_id: MCIId) {
+    pub(crate) fn pad_delay(&self, iopad: &mut IoPad, mci_id: MCIId) {
         match self.pad_delay {
-            MCIPadDelay::Set => set_pad_delay(iopad,mci_id),
-            MCIPadDelay::Unset => unset_pad_delay(iopad,mci_id),
+            MCIPadDelay::Set => set_pad_delay(iopad, mci_id),
+            MCIPadDelay::Unset => unset_pad_delay(iopad, mci_id),
             MCIPadDelay::None => {}
         }
     }
@@ -95,7 +95,7 @@ pub const MMC_26MHZ: MCITiming = MCITiming {
     clk_div: 0x030204,
     clk_src: 0x000302,
     shift: 0x0,
-    pad_delay: MCIPadDelay::Set
+    pad_delay: MCIPadDelay::Set,
 };
 
 pub const MMC_52MHZ: MCITiming = MCITiming {

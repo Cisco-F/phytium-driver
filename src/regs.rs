@@ -1,19 +1,32 @@
-#![allow(unused)] 
+#![allow(unused)]
 
-use core::{marker::PhantomData, ops, ptr::NonNull, time::Duration};
-use bitflags::{bitflags, Flags};
-use log::info;
 use crate::sleep;
+use bitflags::{bitflags, Flags};
+use core::{marker::PhantomData, ops, ptr::NonNull, time::Duration};
+use log::info;
 
-/* 
+/*
  * 为所有的 bitflag! 实现一个 BitsOps trait
  * 方便后续为所有的 bitflag! 实现一些通用的操作
  * 原理是所有的 bitflag! 都是一个结构体，而结构体都是实现了 ops::BitOr 等操作的
  * 这时候为实现了 ops::BitOr 的结构体实现一个 BitsOps trait
  * 这样所有的 bitflag! 都可以识别为实现了 BitsOps trait
 */
-pub trait BitsOps: ops::BitOr<Output = Self> + ops::BitAnd<Output = Self> + ops::Not<Output = Self> + ops::BitXor<Output = Self> + Sized {}
-impl<T> BitsOps for T where T: ops::BitOr<Output = Self> + ops::BitAnd<Output = Self> + ops::Not<Output = Self> + ops::BitXor<Output = Self> {}
+pub trait BitsOps:
+    ops::BitOr<Output = Self>
+    + ops::BitAnd<Output = Self>
+    + ops::Not<Output = Self>
+    + ops::BitXor<Output = Self>
+    + Sized
+{
+}
+impl<T> BitsOps for T where
+    T: ops::BitOr<Output = Self>
+        + ops::BitAnd<Output = Self>
+        + ops::Not<Output = Self>
+        + ops::BitXor<Output = Self>
+{
+}
 
 /*
  * Create a contiguous bitmask starting at bit position @l and ending at
@@ -50,16 +63,16 @@ macro_rules! set_reg32_bits {
 }
 
 #[derive(Debug)]
-pub struct Reg<E:RegError> {
+pub struct Reg<E: RegError> {
     pub addr: NonNull<u8>,
-    _marker: PhantomData<E>
+    _marker: PhantomData<E>,
 }
 
-impl<E:RegError> Reg<E> {
+impl<E: RegError> Reg<E> {
     pub fn new(addr: NonNull<u8>) -> Self {
-        Self { 
+        Self {
             addr,
-            _marker: PhantomData
+            _marker: PhantomData,
         }
     }
 
@@ -90,7 +103,7 @@ impl<E:RegError> Reg<E> {
         self.write_reg(f(old));
     }
 
-    pub fn clear_reg<F: FlagReg + Copy +BitsOps>(&self, val: F) {
+    pub fn clear_reg<F: FlagReg + Copy + BitsOps>(&self, val: F) {
         self.modify_reg(|old| !val & old)
     }
 
@@ -130,14 +143,13 @@ impl<E:RegError> Reg<E> {
         }
         Err(E::timeout())
     }
-    
 }
 
 impl<E: RegError> PartialEq for Reg<E> {
     fn eq(&self, other: &Self) -> bool {
         self.addr == other.addr
     }
-    
+
     fn ne(&self, other: &Self) -> bool {
         !self.eq(other)
     }

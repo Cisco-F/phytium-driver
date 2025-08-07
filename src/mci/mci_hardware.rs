@@ -1,7 +1,7 @@
 use super::MCI;
 
-use super::err::*;
 use super::consts::*;
+use super::err::*;
 use super::regs::*;
 
 use log::*;
@@ -13,17 +13,22 @@ impl MCI {
         reg.read_reg::<MCIStatus>()
     }
 
-    pub(crate) fn fifoth_set(&self, trans_size:MCIFifoThDMATransSize, rx_wmark:u32, tx_wmark:u32){
+    pub(crate) fn fifoth_set(
+        &self,
+        trans_size: MCIFifoThDMATransSize,
+        rx_wmark: u32,
+        tx_wmark: u32,
+    ) {
         let reg = self.config.reg();
-        reg.write_reg(MCIFifoTh::fifoth(trans_size,rx_wmark,tx_wmark));
+        reg.write_reg(MCIFifoTh::fifoth(trans_size, rx_wmark, tx_wmark));
     }
 
-    pub(crate) fn cardthr_set(&self,cardthr:MCIFifoDepth){
+    pub(crate) fn cardthr_set(&self, cardthr: MCIFifoDepth) {
         let reg = self.config.reg();
         reg.write_reg(MCICardThrctl::CARDRD | cardthr.into());
     }
 
-    pub(crate) fn clock_set(&self, enable:bool) {
+    pub(crate) fn clock_set(&self, enable: bool) {
         let reg = self.config.reg();
         if enable {
             reg.set_reg(MCIClkEn::CCLK_ENABLE);
@@ -32,28 +37,27 @@ impl MCI {
         }
     }
 
-    pub(crate) fn update_exteral_clk(&self,uhs_reg:MCIClkSrc) -> MCIResult {
+    pub(crate) fn update_exteral_clk(&self, uhs_reg: MCIClkSrc) -> MCIResult {
         let reg = self.config.reg();
         reg.write_reg(MCIClkSrc::empty());
         reg.write_reg(uhs_reg);
-        reg.retry_for(|reg:MCIClkSts|{
-            reg.contains(MCIClkSts::READY)
-        }, Some(RETRIES_TIMEOUT))?;
+        reg.retry_for(
+            |reg: MCIClkSts| reg.contains(MCIClkSts::READY),
+            Some(RETRIES_TIMEOUT),
+        )?;
         Ok(())
     }
 
     pub(crate) fn init_external_clk(&self) -> MCIResult {
-        let reg_val = 
-        MCIClkSrc::uhs_reg(0, 0, 0x5) | 
-        MCIClkSrc::UHS_EXT_CLK_ENA;
+        let reg_val = MCIClkSrc::uhs_reg(0, 0, 0x5) | MCIClkSrc::UHS_EXT_CLK_ENA;
         if 0x502 == reg_val.bits() {
-            info!("invalid uhs config"); 
+            info!("invalid uhs config");
         }
         self.update_exteral_clk(reg_val)?;
         Ok(())
     }
 
-    pub(crate) fn power_set(&self, enable:bool) {
+    pub(crate) fn power_set(&self, enable: bool) {
         let reg = self.config.reg();
         if enable {
             reg.set_reg(MCIPwrEn::ENABLE);
@@ -62,7 +66,7 @@ impl MCI {
         }
     }
 
-    pub(crate) fn clock_src_set(&self, enable:bool) {
+    pub(crate) fn clock_src_set(&self, enable: bool) {
         let reg = self.config.reg();
         if enable {
             reg.set_reg(MCIClkSrc::UHS_EXT_CLK_ENA);
@@ -71,7 +75,7 @@ impl MCI {
         }
     }
 
-    pub(crate) fn voltage_1_8v_set(&self,enable:bool) {
+    pub(crate) fn voltage_1_8v_set(&self, enable: bool) {
         let reg = self.config.reg();
         if enable {
             reg.set_reg(MCIUhsReg::VOLT_180);
@@ -88,12 +92,11 @@ impl MCI {
     pub(crate) fn ctrl_reset(&self, reset_bits: MCICtrl) -> MCIResult {
         let reg = self.config.reg();
 
-        reg.modify_reg(|reg| {
-            reset_bits | reg
-        });
-        if let Err(e) = reg.retry_for(|reg:MCICtrl| {
-            !reg.contains(reset_bits)
-        }, Some(RETRIES_TIMEOUT)) {
+        reg.modify_reg(|reg| reset_bits | reg);
+        if let Err(e) = reg.retry_for(
+            |reg: MCICtrl| !reg.contains(reset_bits),
+            Some(RETRIES_TIMEOUT),
+        ) {
             error!("Reset failed, bits = 0x{:x}", reset_bits);
             return Err(e);
         }
@@ -106,9 +109,10 @@ impl MCI {
 
         /* for fifo reset, need to check if fifo empty */
         if reset_bits.contains(MCICtrl::FIFO_RESET) {
-            if let Err(e) = reg.retry_for(|reg: MCIStatus| {
-                reg.contains(MCIStatus::FIFO_EMPTY)
-            }, Some(RETRIES_TIMEOUT)) {
+            if let Err(e) = reg.retry_for(
+                |reg: MCIStatus| reg.contains(MCIStatus::FIFO_EMPTY),
+                Some(RETRIES_TIMEOUT),
+            ) {
                 error!("Fifo not empty!");
                 return Err(e);
             }
@@ -156,7 +160,7 @@ impl MCI {
     }
 
     pub(crate) fn set_ddr_mode(&self, enable: bool) {
-        let reg = self.config. reg();
+        let reg = self.config.reg();
         let mut uhs_val = reg.read_reg::<MCIUhsReg>();
         let mut emmc_val = reg.read_reg::<MCIEmmcDdrReg>();
 
@@ -196,7 +200,8 @@ impl MCI {
 
     pub(crate) fn check_if_card_exist(&self) -> bool {
         let reg = self.config.reg();
-        !reg.read_reg::<MCICardDetect>().contains(MCICardDetect::DETECTED)
+        !reg.read_reg::<MCICardDetect>()
+            .contains(MCICardDetect::DETECTED)
     }
 
     pub(crate) fn check_if_card_busy(&self) -> bool {

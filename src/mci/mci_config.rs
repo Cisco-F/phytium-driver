@@ -3,17 +3,17 @@ compile_error!("can't enable feature dma and pio at the same time!");
 
 use core::ptr::NonNull;
 
-use super::mci_timing::*;
 use super::consts::*;
+use super::mci_timing::*;
 use super::regs::*;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct MCIConfig {
-    instance_id: MCIId,         /* Device instance id */
-    reg: MCIReg,                /* Device register base address */
-    irq_num: u32,               /* Device IRQ number */
-    trans_mode: MCITransMode,   /* Trans mode, PIO/DMA */
-    non_removable: bool,        /* Non-removable media, e.g. eMMC */
+    instance_id: MCIId,       /* Device instance id */
+    reg: MCIReg,              /* Device register base address */
+    irq_num: u32,             /* Device IRQ number */
+    trans_mode: MCITransMode, /* Trans mode, PIO/DMA */
+    non_removable: bool,      /* Non-removable media, e.g. eMMC */
 }
 
 impl MCIConfig {
@@ -25,8 +25,8 @@ impl MCIConfig {
             trans_mode: MCITransMode::DMA,
             non_removable: false,
         };
-        
-        if cfg!(feature="pio") {
+
+        if cfg!(feature = "pio") {
             config.trans_mode = MCITransMode::PIO;
         }
 
@@ -45,7 +45,7 @@ impl MCIConfig {
         Self::new(addr)
     }
     /* Get time-tuning related parameters and method */
-    pub fn get_tuning(clock_freq: MCIClkSpeed, non_removable: bool) ->  Option<MCITiming> {
+    pub fn get_tuning(clock_freq: MCIClkSpeed, non_removable: bool) -> Option<MCITiming> {
         if clock_freq == MCIClkSpeed::ClkSpeed400KHz {
             return Some(MMC_SD_400K_HZ);
         }

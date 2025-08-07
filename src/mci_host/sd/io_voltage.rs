@@ -16,7 +16,7 @@ impl SdIoVoltage {
             func: None,
         }
     }
-    
+
     pub(crate) fn typ(&self) -> SdIoVoltageCtrlType {
         self.typ
     }
